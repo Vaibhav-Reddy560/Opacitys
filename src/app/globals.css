@@ -1,0 +1,316 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * OPACITYS — "Light, Split."
+ *
+ * A prism splits white light into its spectrum; Opacitys splits a design
+ * into measurable dimensions. The visual system carries that literally:
+ *   - CHROME   = the precision instrument (polished, cold, exact)
+ *   - SPECTRUM = the decomposition (7 critique dimensions, 7 spectral bands)
+ *
+ * Dark-only by design. There is no light theme -- chrome and iridescence
+ * only read correctly against a dark, slightly cool base.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-body);
+  --font-body: var(--font-body);
+  --font-wordmark: var(--font-wordmark);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-body);
+
+  /* Surfaces */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Chrome ramp — the metal itself */
+  --color-chrome-void: var(--chrome-void);
+  --color-chrome-deep: var(--chrome-deep);
+  --color-chrome-mid: var(--chrome-mid);
+  --color-chrome-edge: var(--chrome-edge);
+  --color-chrome-light: var(--chrome-light);
+  --color-chrome-spec: var(--chrome-spec);
+
+  /* Spectral bands — one per critique dimension, in true spectrum order */
+  --color-spectral-hierarchy: var(--spectral-hierarchy);
+  --color-spectral-color: var(--spectral-color);
+  --color-spectral-typography: var(--spectral-typography);
+  --color-spectral-layout: var(--spectral-layout);
+  --color-spectral-spacing: var(--spectral-spacing);
+  --color-spectral-balance: var(--spectral-balance);
+  --color-spectral-originality: var(--spectral-originality);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Cool near-black. Never pure #000 — chrome needs somewhere to fall off to. */
+  --background: oklch(0.145 0.012 265);
+  --foreground: oklch(0.97 0.004 265);
+
+  --card: oklch(0.185 0.014 265);
+  --card-foreground: oklch(0.97 0.004 265);
+  --popover: oklch(0.185 0.014 265);
+  --popover-foreground: oklch(0.97 0.004 265);
+
+  --primary: oklch(0.93 0.006 265);
+  --primary-foreground: oklch(0.16 0.014 265);
+  --secondary: oklch(0.25 0.016 265);
+  --secondary-foreground: oklch(0.97 0.004 265);
+  --muted: oklch(0.24 0.014 265);
+  --muted-foreground: oklch(0.68 0.014 265);
+  --accent: oklch(0.28 0.02 265);
+  --accent-foreground: oklch(0.97 0.004 265);
+  --destructive: oklch(0.65 0.21 18);
+
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.75 0.09 250);
+
+  /* Chrome ramp: void -> specular. Used by gradients, not as flat fills. */
+  --chrome-void: oklch(0.17 0.014 265);
+  --chrome-deep: oklch(0.3 0.016 262);
+  --chrome-mid: oklch(0.52 0.014 258);
+  --chrome-edge: oklch(0.72 0.012 255);
+  --chrome-light: oklch(0.88 0.008 250);
+  --chrome-spec: oklch(0.99 0.004 240);
+
+  /* Spectrum: violet -> red, matched to dimension order in the pipeline */
+  --spectral-hierarchy: oklch(0.62 0.22 295);
+  --spectral-color: oklch(0.62 0.2 265);
+  --spectral-typography: oklch(0.75 0.15 205);
+  --spectral-layout: oklch(0.78 0.17 165);
+  --spectral-spacing: oklch(0.85 0.16 95);
+  --spectral-balance: oklch(0.75 0.17 55);
+  --spectral-originality: oklch(0.66 0.22 15);
+
+  /* Severity — reads against the spectral palette without competing */
+  --severity-critical: oklch(0.66 0.22 15);
+  --severity-major: oklch(0.78 0.16 70);
+  --severity-minor: oklch(0.7 0.03 260);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    /* Chrome/iridescent gradients band badly in 8-bit. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    @apply font-sans;
+    background-color: var(--background);
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-variation-settings: "wght" 400;
+    letter-spacing: -0.011em;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--spectral-typography) 32%, transparent);
+    color: var(--foreground);
+  }
+
+  /* Chrome-tinted scrollbar; a default one breaks the illusion instantly. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    border: 2px solid var(--background);
+    background: linear-gradient(
+      180deg,
+      var(--chrome-edge),
+      var(--chrome-deep)
+    );
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      var(--chrome-spec),
+      var(--chrome-mid)
+    );
+  }
+}
+
+@layer utilities {
+  /*
+   * Chrome text fill. A 7-stop ramp (dark/light alternating) is what sells
+   * metal — fewer stops read as a flat gradient, more read as noise.
+   */
+  .text-chrome {
+    background-image: linear-gradient(
+      178deg,
+      var(--chrome-light) 0%,
+      var(--chrome-spec) 14%,
+      var(--chrome-mid) 34%,
+      var(--chrome-deep) 50%,
+      var(--chrome-mid) 62%,
+      var(--chrome-light) 82%,
+      var(--chrome-edge) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Brushed-metal surface for cards/panels. */
+  .surface-chrome {
+    background-image:
+      linear-gradient(
+        168deg,
+        color-mix(in oklch, var(--chrome-edge) 12%, transparent) 0%,
+        transparent 38%,
+        transparent 62%,
+        color-mix(in oklch, var(--chrome-deep) 16%, transparent) 100%
+      ),
+      linear-gradient(
+        to bottom,
+        var(--card),
+        color-mix(in oklch, var(--background) 70%, var(--card))
+      );
+  }
+
+  /* Hairline top highlight — the single cheapest "expensive" detail. */
+  .edge-highlight {
+    position: relative;
+  }
+  .edge-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      color-mix(in oklch, var(--chrome-spec) 42%, transparent),
+      transparent 34%,
+      transparent 66%,
+      color-mix(in oklch, var(--chrome-edge) 18%, transparent)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* Referenced by Marquee via animate-[marquee_var(--marquee-duration)_linear_infinite]. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * Referenced by SpectrumSplit. Dash pattern + travel distance are each set
+ * to sum exactly to the dasharray total (366 for the beam, 70 for a band),
+ * so the pattern tiles with no visible seam at the loop point.
+ */
+@keyframes beam-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -366;
+  }
+}
+@keyframes ray-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -70;
+  }
+}
+
+/*
+ * Custom cursor. The `custom-cursor-active` class only ever lands on <html>
+ * when CustomCursor's effect has confirmed a fine, hover-capable, motion-OK
+ * pointer — so this never fires on touch devices or under reduced motion,
+ * and the native cursor is left completely alone in both cases. Text
+ * inputs keep the native caret cursor; a solid arrow glyph is the wrong
+ * affordance for "you can click to place a cursor here".
+ */
+html.custom-cursor-active,
+html.custom-cursor-active * {
+  cursor: none !important;
+}
+html.custom-cursor-active input,
+html.custom-cursor-active textarea,
+html.custom-cursor-active [contenteditable="true"] {
+  cursor: text !important;
+}
+
+.opacitys-cursor .cursor-arrow {
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 5px 4px;
+}
+.opacitys-cursor.is-active .cursor-arrow {
+  transform: scale(1.4) rotate(-8deg);
+}
+.opacitys-cursor.is-down .cursor-arrow {
+  transform: scale(0.82);
+}
+
+/*
+ * Honour reduced-motion globally. The WebGL layers additionally check this
+ * in JS and stop their rAF loops entirely rather than just freezing visually.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
