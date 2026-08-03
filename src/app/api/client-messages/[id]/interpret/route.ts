@@ -16,6 +16,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Sign in to interpret this entry." }, { status: 401 });
   }
 
+  if (session.kind === "guest") {
+    return NextResponse.json({ error: "No entry found." }, { status: 404 });
+  }
+
   const { id } = await params;
   let message: typeof schema.clientMessages.$inferSelect;
   try {
@@ -29,10 +33,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     }
     message = found;
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Could not load that entry." },
-      { status: 503 },
-    );
+    console.error("[client-messages/:id/interpret] lookup failed:", err);
+    return NextResponse.json({ error: "Could not load that entry." }, { status: 503 });
   }
 
   if (!process.env.AI_GATEWAY_API_KEY) {

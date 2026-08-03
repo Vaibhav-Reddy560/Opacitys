@@ -85,7 +85,7 @@ export default function TranslatePage() {
       if (!res.ok) throw new Error(json.error ?? "Could not load the log.");
       const loaded = json.entries as Entry[];
       setEntries(loaded);
-      setListError(null);
+      setListError(json.notice ?? null);
       const maxIteration = loaded.reduce((m, e) => Math.max(m, e.iterationNumber ?? 0), 0);
       setIteration(maxIteration + 1);
     } catch (err) {

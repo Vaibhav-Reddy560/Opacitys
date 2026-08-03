@@ -20,6 +20,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Sign in to update this entry." }, { status: 401 });
   }
 
+  if (session.kind === "guest") {
+    return NextResponse.json({ error: "Guest sessions have nothing to update." }, { status: 403 });
+  }
+
   const { id } = await params;
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -58,9 +62,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     return NextResponse.json({ entry });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Could not update this entry." },
-      { status: 503 },
-    );
+    console.error("[client-messages/:id] PATCH failed:", err);
+    return NextResponse.json({ error: "Could not update this entry." }, { status: 503 });
   }
 }
