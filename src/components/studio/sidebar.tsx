@@ -48,8 +48,8 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
     <>
       {/* Mobile bar */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/[0.07] bg-background/85 px-4 py-3 backdrop-blur-md lg:hidden">
-        <Link href="/studio">
-          <TitleImage width={403} height={60} className="h-6 w-[161px] pt-1" />
+        <Link href="/studio" className="shrink-0">
+          <TitleImage width={403} height={60} className="h-6 w-auto mt-1" />
         </Link>
         <button
           type="button"

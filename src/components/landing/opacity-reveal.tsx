@@ -146,9 +146,9 @@ export function OpacityReveal() {
           >
             <defs>
               <radialGradient id={gradId} cx="36%" cy="30%" r="78%">
-                <stop offset="0%" stopColor={SPECTRUM.typography.color} stopOpacity="0.92" />
-                <stop offset="46%" stopColor={SPECTRUM.color.color} stopOpacity="0.6" />
-                <stop offset="100%" stopColor={SPECTRUM.hierarchy.color} stopOpacity="0.16" />
+                <stop offset="0%" stopColor={SPECTRUM.typography.color} stopOpacity="0.58" />
+                <stop offset="46%" stopColor={SPECTRUM.color.color} stopOpacity="0.46" />
+                <stop offset="100%" stopColor={SPECTRUM.hierarchy.color} stopOpacity="0.3" />
               </radialGradient>
               <linearGradient id={barId} x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor={SPECTRUM.hierarchy.color} />

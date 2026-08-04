@@ -41,14 +41,14 @@ export function SpectrumSplit() {
   const prismOpacity = useTransform(scrollYProgress, [0.08, 0.2], [0, 1]);
   const glowOpacity = useTransform(scrollYProgress, [0.14, 0.26], [0, 1]);
 
-  const cx = 430;
-  const cy = 230;
-  const len = 420;
+  const cx = 330;
+  const cy = 200;
+  const len = 300;
   const apex = { x: cx, y: cy };
 
   return (
     <div ref={ref} className="relative w-full">
-      <svg viewBox="0 0 1000 460" className="w-full" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 760 400" className="w-full" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="prism-front" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="oklch(0.98 0.006 240 / 0.9)" />
@@ -152,7 +152,7 @@ export function SpectrumSplit() {
 // and pushed the last three rays (plus their end dots and labels) below the
 // viewBox, where they silently vanished.
 const BAND_COUNT = DIMENSION_ORDER.length;
-const FAN_HALF_ANGLE = 27;
+const FAN_HALF_ANGLE = 32;
 const ANGLE_STEP = (FAN_HALF_ANGLE * 2) / (BAND_COUNT - 1);
 
 function SpectrumBand({
@@ -199,7 +199,7 @@ function SpectrumBand({
         x2={endX}
         y2={endY}
         stroke={meta.color}
-        strokeWidth="2.5"
+        strokeWidth="2.8"
         strokeLinecap="round"
         style={reduce ? undefined : { pathLength }}
       />
@@ -217,7 +217,7 @@ function SpectrumBand({
           x2={endX}
           y2={endY}
           stroke={meta.color}
-          strokeWidth="1.5"
+          strokeWidth="1.7"
           strokeLinecap="round"
           strokeDasharray="10 60"
           className="animate-[ray-flow_2.2s_linear_infinite]"
@@ -231,7 +231,7 @@ function SpectrumBand({
       <motion.circle
         cx={endX}
         cy={endY}
-        r="3"
+        r="3.4"
         fill={meta.color}
         style={reduce ? undefined : { opacity: labelOpacity }}
       />
@@ -240,7 +240,7 @@ function SpectrumBand({
         y={labelY}
         textAnchor="start"
         dominantBaseline="middle"
-        fontSize="14"
+        fontSize="16"
         fill={meta.color}
         style={reduce ? undefined : { opacity: labelOpacity }}
       >

@@ -32,7 +32,7 @@ export function AuthShell({
       <div className="w-full max-w-[380px]">
         <div className="mb-9 text-center">
           <Link href="/" className="inline-block">
-            <TitleImage width={220} height={88} className="h-[52px] w-auto" size="hero" priority />
+            <TitleImage width={591} height={88} className="h-8 sm:h-[52px] w-auto" size="hero" priority />
           </Link>
           <h1
             className="mt-8 text-xl tracking-tight"

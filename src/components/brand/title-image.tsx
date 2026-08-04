@@ -40,7 +40,7 @@ export function TitleImage({
   const bandWidth = size === "hero" ? "260% 260%" : "220% 220%";
 
   return (
-    <div className="group relative inline-block">
+    <div className="group relative inline-block shrink-0">
       <Image
         src="/Title_Image.png"
         alt="Opacitys"

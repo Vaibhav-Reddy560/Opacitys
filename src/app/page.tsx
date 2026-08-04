@@ -47,17 +47,17 @@ export default function Home() {
             <Reveal delay={0.05}>
               <TitleImage
                 width={1200}
-                height={400}
-                className="w-full max-w-3xl h-auto"
+                height={179}
+                className="w-full max-w-[264px] sm:max-w-md md:max-w-2xl lg:max-w-3xl h-auto"
                 size="hero"
                 priority
               />
             </Reveal>
 
             <Reveal delay={0.2}>
-              <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 backdrop-blur-md">
+              <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-md">
                 <span
-                  className="text-[11px] uppercase tracking-[0.2em] text-foreground/65"
+                  className="whitespace-nowrap text-[9.5px] uppercase tracking-[0.1em] text-foreground/65 sm:text-[11px] sm:tracking-[0.2em]"
                   aria-label={HERO.eyebrow}
                 >
                   <span aria-hidden>
@@ -86,7 +86,7 @@ export default function Home() {
 
             <Reveal delay={0.38}>
               <p
-                className="text-balance mt-7 max-w-xl text-[15px] leading-relaxed text-foreground/68 sm:text-base"
+                className="text-balance mt-7 max-w-xl text-[13px] leading-relaxed text-foreground/68 sm:text-[15px]"
                 aria-label={HERO.lede}
               >
                 <span aria-hidden>
@@ -282,8 +282,10 @@ export default function Home() {
             aria-hidden
             className="absolute inset-0 -z-10"
             style={{
-              background:
-                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.5) 0%, oklch(0.145 0.012 265 / 0.3) 42%, oklch(0.145 0.012 265 / 0.65) 100%)",
+              background: [
+                "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
+                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
+              ].join(", "),
             }}
           />
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
@@ -308,9 +310,9 @@ export default function Home() {
 
         <footer className="border-t border-white/[0.06] px-5 py-10 sm:px-8">
           <div className="mx-auto flex max-w-[1680px] flex-col items-center justify-between gap-4 sm:flex-row">
-            <TitleImage width={150} height={60} className="h-[26px] w-auto" />
+            <TitleImage width={403} height={60} className="h-[26px] w-auto" />
             <p className="text-xs text-foreground/50">
-              For designers, by someone who kept hitting the same walls.
+              Designed with designers in mind.
             </p>
             <Link
               href="/studio"

@@ -12,8 +12,8 @@ export function SiteNav() {
       )}
     >
       <nav className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-4 sm:px-8">
-        <Link href="/" aria-label="Opacitys home">
-          <TitleImage width={150} height={60} className="h-[26px] w-auto pt-1" />
+        <Link href="/" aria-label="Opacitys home" className="shrink-0">
+          <TitleImage width={403} height={60} className="h-[26px] w-auto pt-1" />
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-5">
