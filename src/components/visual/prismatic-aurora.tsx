@@ -21,11 +21,33 @@
  * Non-interactivity is structural, and prefers-reduced-motion is honoured
  * for free by the blanket rule in globals.css.
  */
-export function PrismaticAurora({ className = "" }: { className?: string }) {
+export function PrismaticAurora({
+  className = "",
+  compact = false,
+}: {
+  className?: string;
+  /**
+   * The four corner blobs carry fixed min-height/min-width floors sized for
+   * a tall (~800px+) container like the hero or auth shell. Dropped into a
+   * shorter section (e.g. the closing CTA), those same floors force the
+   * blobs to occupy nearly the whole box, so they overlap heavily — and
+   * since they paint in normal (non-blended) order, the later, warmer blobs
+   * (spacing, originality) sit on top at full opacity and bury the cooler
+   * ones underneath. The result reads as a duller, warm-skewed wash instead
+   * of the same four-colour spread the hero shows. `compact` scales every
+   * floor down (~58%) so the blobs stay spatially distinct in a shorter box
+   * too, without changing how this looks in the tall usages.
+   */
+  compact?: boolean;
+}) {
   return (
     <div aria-hidden className={`overflow-hidden ${className}`}>
       <div
-        className="absolute left-1/2 top-1/2 size-[130%] min-h-[900px] min-w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className={
+          compact
+            ? "absolute left-1/2 top-1/2 size-[130%] min-h-[520px] min-w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            : "absolute left-1/2 top-1/2 size-[130%] min-h-[900px] min-w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        }
         style={{
           background: `conic-gradient(in oklch, from 0deg,
             var(--spectral-hierarchy),
@@ -33,14 +55,18 @@ export function PrismaticAurora({ className = "" }: { className?: string }) {
             var(--spectral-spacing),
             var(--spectral-originality),
             var(--spectral-hierarchy))`,
-          filter: "blur(90px) saturate(1.5)",
+          filter: compact ? "blur(52px) saturate(1.5)" : "blur(90px) saturate(1.5)",
           opacity: 0.55,
           animation: "aurora-ring-spin 16s linear infinite",
           willChange: "transform",
         }}
       />
       <div
-        className="absolute -left-[10%] top-[5%] size-[55%] min-h-[420px] min-w-[420px] rounded-full blur-[110px]"
+        className={
+          compact
+            ? "absolute -left-[10%] top-[5%] size-[55%] min-h-[245px] min-w-[245px] rounded-full blur-[64px]"
+            : "absolute -left-[10%] top-[5%] size-[55%] min-h-[420px] min-w-[420px] rounded-full blur-[110px]"
+        }
         style={{
           background: "var(--spectral-hierarchy)",
           animation: "aurora-drift-a 8s ease-in-out infinite",
@@ -48,7 +74,11 @@ export function PrismaticAurora({ className = "" }: { className?: string }) {
         }}
       />
       <div
-        className="absolute -right-[8%] top-[18%] size-[50%] min-h-[380px] min-w-[380px] rounded-full blur-[105px]"
+        className={
+          compact
+            ? "absolute -right-[8%] top-[18%] size-[50%] min-h-[220px] min-w-[220px] rounded-full blur-[61px]"
+            : "absolute -right-[8%] top-[18%] size-[50%] min-h-[380px] min-w-[380px] rounded-full blur-[105px]"
+        }
         style={{
           background: "var(--spectral-typography)",
           animation: "aurora-drift-b 10s ease-in-out infinite",
@@ -57,7 +87,11 @@ export function PrismaticAurora({ className = "" }: { className?: string }) {
         }}
       />
       <div
-        className="absolute bottom-[12%] left-[16%] size-[52%] min-h-[400px] min-w-[400px] rounded-full blur-[115px]"
+        className={
+          compact
+            ? "absolute bottom-[12%] left-[16%] size-[52%] min-h-[232px] min-w-[232px] rounded-full blur-[67px]"
+            : "absolute bottom-[12%] left-[16%] size-[52%] min-h-[400px] min-w-[400px] rounded-full blur-[115px]"
+        }
         style={{
           background: "var(--spectral-spacing)",
           animation: "aurora-drift-c 8.5s ease-in-out infinite",
@@ -66,7 +100,11 @@ export function PrismaticAurora({ className = "" }: { className?: string }) {
         }}
       />
       <div
-        className="absolute -bottom-[6%] right-[8%] size-[48%] min-h-[360px] min-w-[360px] rounded-full blur-[100px]"
+        className={
+          compact
+            ? "absolute -bottom-[6%] right-[8%] size-[48%] min-h-[210px] min-w-[210px] rounded-full blur-[58px]"
+            : "absolute -bottom-[6%] right-[8%] size-[48%] min-h-[360px] min-w-[360px] rounded-full blur-[100px]"
+        }
         style={{
           background: "var(--spectral-originality)",
           animation: "aurora-drift-d 7s ease-in-out infinite",

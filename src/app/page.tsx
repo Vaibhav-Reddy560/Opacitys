@@ -48,7 +48,7 @@ export default function Home() {
               <TitleImage
                 width={1200}
                 height={179}
-                className="w-full max-w-[264px] sm:max-w-md md:max-w-2xl lg:max-w-3xl h-auto"
+                className="w-full max-w-[290px] sm:max-w-md md:max-w-2xl lg:max-w-3xl h-auto"
                 size="hero"
                 priority
               />
@@ -57,7 +57,7 @@ export default function Home() {
             <Reveal delay={0.2}>
               <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-md">
                 <span
-                  className="whitespace-nowrap text-[9.5px] uppercase tracking-[0.1em] text-foreground/65 sm:text-[11px] sm:tracking-[0.2em]"
+                  className="whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-foreground/65 sm:text-[11px] sm:tracking-[0.2em]"
                   aria-label={HERO.eyebrow}
                 >
                   <span aria-hidden>
@@ -86,7 +86,7 @@ export default function Home() {
 
             <Reveal delay={0.38}>
               <p
-                className="text-balance mt-7 max-w-xl text-[13px] leading-relaxed text-foreground/68 sm:text-[15px]"
+                className="text-balance mt-7 max-w-xl text-[14px] leading-relaxed text-foreground/68 sm:text-[15px]"
                 aria-label={HERO.lede}
               >
                 <span aria-hidden>
@@ -277,7 +277,7 @@ export default function Home() {
         {/* Close                                                          */}
         {/* ------------------------------------------------------------- */}
         <section className="relative isolate overflow-hidden px-6 py-32 sm:py-44">
-          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" />
+          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
           <div
             aria-hidden
             className="absolute inset-0 -z-10"
