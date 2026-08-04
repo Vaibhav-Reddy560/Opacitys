@@ -10,6 +10,7 @@ import { VoiceMicButton } from "@/components/voice/voice-mic-button";
 import { MODULES } from "@/lib/copy";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import type { ClientInterpretation } from "@/lib/ai/client-interpretation";
+import { fetchJson, readJsonSafe } from "@/lib/http";
 
 const MODULE = MODULES.find((m) => m.slug === "translate")!;
 const ACCENT = SPECTRUM.originality.color;
@@ -81,12 +82,11 @@ export default function TranslatePage() {
   async function loadEntries() {
     try {
       const res = await fetch("/api/client-messages");
-      const json = await res.json();
+      const json = await readJsonSafe<{ entries: Entry[]; notice?: string; error?: string }>(res);
       if (!res.ok) throw new Error(json.error ?? "Could not load the log.");
-      const loaded = json.entries as Entry[];
-      setEntries(loaded);
+      setEntries(json.entries);
       setListError(json.notice ?? null);
-      const maxIteration = loaded.reduce((m, e) => Math.max(m, e.iterationNumber ?? 0), 0);
+      const maxIteration = json.entries.reduce((m, e) => Math.max(m, e.iterationNumber ?? 0), 0);
       setIteration(maxIteration + 1);
     } catch (err) {
       setListError(err instanceof Error ? err.message : "Could not load the log.");
@@ -95,9 +95,9 @@ export default function TranslatePage() {
   }
 
   useEffect(() => {
-    // Fetch-on-mount to populate the log — same pattern as critique/page.tsx's
-    // demo-user fetch, just factored into a named function since submit(),
-    // interpret() and markReplied() all need to re-run it after a mutation.
+    // Fetch-on-mount to populate the log — submit(), interpret() and
+    // markReplied() all need to re-run it after a mutation, hence the
+    // named function rather than an inline effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadEntries();
   }, []);
@@ -107,27 +107,29 @@ export default function TranslatePage() {
     setBusy(true);
     setError(null);
     try {
-      const createRes = await fetch("/api/client-messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rawText: message,
-          channel,
-          iterationNumber: iteration,
-          priceCents: price ? Math.round(parseFloat(price) * 100) : undefined,
-        }),
-      });
-      const createJson = await createRes.json();
-      if (!createRes.ok) throw new Error(createJson.error ?? "Could not log that message.");
+      const createJson = await fetchJson<{ entry: { id: string } }>(
+        "/api/client-messages",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rawText: message,
+            channel,
+            iterationNumber: iteration,
+            priceCents: price ? Math.round(parseFloat(price) * 100) : undefined,
+          }),
+        },
+        "Could not log that message.",
+      );
 
       setMessage("");
       setPrice("");
       await loadEntries();
 
       // Auto-interpret the entry just created. If this fails (e.g. no
-      // AI_GATEWAY_API_KEY), the entry is still logged — interpretation
+      // GROQ_API_KEY), the entry is still logged — interpretation
       // stays available on demand from the timeline below.
-      const id = createJson.entry.id as string;
+      const id = createJson.entry.id;
       setInterpretingId(id);
       await fetch(`/api/client-messages/${id}/interpret`, { method: "POST" });
       await loadEntries();

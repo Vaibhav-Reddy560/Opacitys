@@ -182,6 +182,12 @@ interface PrismaticChromeProps {
    * only if you can afford the frames.
    */
   resolutionScale?: number;
+  /**
+   * When false, the light source drifts on a slow autonomous path instead
+   * of following the pointer — a "live but not user-interactive" backdrop.
+   * Default true preserves the original cursor-follow behaviour.
+   */
+  interactive?: boolean;
 }
 
 export function PrismaticChrome({
@@ -190,6 +196,7 @@ export function PrismaticChrome({
   spectrum = 1,
   speed = 1,
   resolutionScale = 0.45,
+  interactive = true,
 }: PrismaticChromeProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -251,7 +258,9 @@ export function PrismaticChrome({
       target.x = (e.clientX - rect.left) / rect.width;
       target.y = 1 - (e.clientY - rect.top) / rect.height;
     };
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    if (interactive) {
+      window.addEventListener("pointermove", onPointerMove, { passive: true });
+    }
 
     let raf = 0;
     let visible = true;
@@ -260,10 +269,17 @@ export function PrismaticChrome({
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
+      const t = (now - start) / 1000;
+      if (!interactive) {
+        // Slow Lissajous drift — different x/y frequencies so the light
+        // source wanders without ever visibly repeating on a human timescale.
+        target.x = 0.5 + 0.3 * Math.sin(t * 0.11);
+        target.y = 0.42 + 0.2 * Math.sin(t * 0.075 + 1.3);
+      }
       current.x += (target.x - current.x) * 0.045;
       current.y += (target.y - current.y) * 0.045;
       program.uniforms.uPointer.value.set(current.x, current.y);
-      program.uniforms.uTime.value = ((now - start) / 1000) * speed;
+      program.uniforms.uTime.value = t * speed;
       renderer.render({ scene: mesh });
     };
 
@@ -309,12 +325,12 @@ export function PrismaticChrome({
       pause();
       io.disconnect();
       ro.disconnect();
-      window.removeEventListener("pointermove", onPointerMove);
+      if (interactive) window.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.remove();
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
-  }, [intensity, spectrum, speed, resolutionScale]);
+  }, [intensity, spectrum, speed, resolutionScale, interactive]);
 
   return (
     <div

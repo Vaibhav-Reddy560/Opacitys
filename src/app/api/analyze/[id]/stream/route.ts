@@ -16,25 +16,55 @@ const MAX_MS = 3 * 60 * 1000; // matches the 30-120s pipeline estimate + margin
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: analysisId } = await params;
 
+  let pendingTick: ReturnType<typeof setTimeout> | null = null;
+  // Set once the client disconnects (tab closed, navigated away) or the
+  // stream reaches a terminal event. Without this, a still-scheduled
+  // `tick()` fires after the underlying controller is gone and throws
+  // "Controller is already closed" on the next `enqueue` — reproduced live
+  // by navigating away mid-poll. `cancel()` below is the Web Streams API's
+  // hook for exactly that disconnect, so this checks it before every write
+  // instead of only reacting to the resulting exception.
+  let closed = false;
+
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
       const send = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          // Client disconnected between the `closed` check and this write —
+          // nothing left to notify, so just stop.
+          closed = true;
+        }
+      };
+      const finish = () => {
+        if (closed) return;
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // Already closed by the client disconnecting — fine.
+        }
       };
 
       const startedAt = Date.now();
 
       const tick = async () => {
+        if (closed) return;
+
         const [analysis] = await db
-          .select({ status: schema.analyses.status })
+          .select({ status: schema.analyses.status, error: schema.analyses.error })
           .from(schema.analyses)
           .where(eq(schema.analyses.id, analysisId))
           .limit(1);
 
+        if (closed) return; // may have disconnected during the query above
+
         if (!analysis) {
           send("error", { message: "analysis not found" });
-          controller.close();
+          finish();
           return;
         }
 
@@ -58,13 +88,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
             : [];
 
           send("complete", { critique, findings });
-          controller.close();
+          finish();
           return;
         }
 
         if (analysis.status === "failed") {
-          send("failed", { analysisId });
-          controller.close();
+          send("failed", { analysisId, error: analysis.error ?? null });
+          finish();
           return;
         }
 
@@ -72,15 +102,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
         if (Date.now() - startedAt > MAX_MS) {
           send("timeout", { analysisId });
-          controller.close();
+          finish();
           return;
         }
 
-        setTimeout(tick, POLL_MS);
+        pendingTick = setTimeout(tick, POLL_MS);
       };
 
       send("progress", { status: "queued" });
       tick();
+    },
+    cancel() {
+      closed = true;
+      if (pendingTick) clearTimeout(pendingTick);
     },
   });
 

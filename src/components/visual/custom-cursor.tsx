@@ -12,6 +12,13 @@ import { SPECTRUM_GRADIENT } from "@/lib/critique/spectrum";
  * behind it. Mounted once in the root layout, so it is live everywhere —
  * landing page and every studio route — not just the hero.
  *
+ * The halo is rainbow over plain page, but collapses to a single hue whenever
+ * the pointer is inside an element that publishes `data-cursor-accent` — the
+ * cards, panels and icons that already light up in their dimension's colour.
+ * It also dims there: a solid accent at the rainbow's opacity reads much
+ * heavier than the rainbow does, and the point is to agree with the card's
+ * glow rather than compete with it.
+ *
  * Disabled outright on touch/coarse pointers and under reduced motion, in
  * which case the native cursor is left alone entirely. One rAF loop writes
  * a single `transform`; hover/press state is two class toggles driven by
@@ -24,11 +31,29 @@ const ARROW_PATH =
 const INTERACTIVE_SELECTOR =
   "a, button, input, textarea, select, [role='button'], [data-cursor='interactive']";
 
+/**
+ * Any element that lights up in one of the spectral colours publishes it as
+ * `data-cursor-accent` (PrismPanel, PrismIcon — see prism.tsx). `closest()`
+ * means the innermost accented ancestor wins, so an accented icon sitting
+ * inside a differently-accented panel resolves to the icon.
+ */
+const ACCENT_SELECTOR = "[data-cursor-accent]";
+
+/** Halo opacity over plain page vs. over an accented element. */
+const HALO_IDLE_OPACITY = "0.4";
+const HALO_ACCENT_OPACITY = "0.22";
+
+const rainbowHalo = `conic-gradient(${SPECTRUM_GRADIENT})`;
+/** Falls off to nothing rather than filling the disc — a flat accent at the same size reads far heavier than the rainbow it replaces. */
+const accentHalo = (accent: string) =>
+  `radial-gradient(circle at 50% 50%, ${accent} 0%, transparent 72%)`;
+
 export function CustomCursor() {
   const rawId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const idPrefix = `cur${rawId}`;
   const ids = chromeFilterIds(idPrefix);
   const hostRef = useRef<HTMLDivElement>(null);
+  const haloRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -67,9 +92,25 @@ export function CustomCursor() {
     };
     document.addEventListener("pointerleave", onLeaveWindow);
 
+    // Sampled on pointerover rather than per frame: the accent can only
+    // change when the pointer crosses into a different element, which is
+    // exactly when this fires. Per-frame elementFromPoint + getComputedStyle
+    // would cost a style resolution every frame for the same answer.
+    const halo = haloRef.current;
+    let currentAccent: string | null = null;
+
+    const applyAccent = (accent: string | null) => {
+      if (!halo || accent === currentAccent) return;
+      currentAccent = accent;
+      halo.style.background = accent ? accentHalo(accent) : rainbowHalo;
+      halo.style.opacity = accent ? HALO_ACCENT_OPACITY : HALO_IDLE_OPACITY;
+    };
+
     const onOver = (e: PointerEvent) => {
       const target = e.target as Element | null;
       host.classList.toggle("is-active", !!target?.closest(INTERACTIVE_SELECTOR));
+      const accented = target?.closest(ACCENT_SELECTOR);
+      applyAccent(accented?.getAttribute("data-cursor-accent") || null);
     };
     document.addEventListener("pointerover", onOver, { passive: true });
 
@@ -105,10 +146,12 @@ export function CustomCursor() {
     >
       <div className="cursor-arrow relative -translate-x-[3px] -translate-y-[2px]">
         <span
+          ref={haloRef}
           aria-hidden
-          className="pointer-events-none absolute -inset-6 -z-10 rounded-full opacity-40 blur-[15px]"
+          className="pointer-events-none absolute -inset-6 -z-10 rounded-full blur-[15px] [transition:background_220ms_ease,opacity_220ms_ease]"
           style={{
-            background: `conic-gradient(${SPECTRUM_GRADIENT})`,
+            background: rainbowHalo,
+            opacity: HALO_IDLE_OPACITY,
             animation: "spin 4.5s linear infinite",
           }}
         />

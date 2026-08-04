@@ -50,7 +50,7 @@ export const OPACITY_STAGES = [
 
 export const PROBLEM = {
   eyebrow: "Why it stays faint",
-  title: "The hard part was never the drawing.",
+  title: "Designing is rarely the hard part.",
   body:
     "It is the brief you have to guess at, the note that just says make it pop, the trend that moved while you were finishing, and the quiet question of whether the thing you made is actually good. Opacitys is built around those, not around the canvas.",
   frictions: [
@@ -125,7 +125,9 @@ export const MODULES = [
     body:
       "Most designs are a blend, not a category. This reads an image against a labelled taxonomy and tells you the mix — sixty percent Swiss, thirty brutalist, ten editorial — with the same answer every time you ask.",
     dimension: "hierarchy",
-    status: "partial",
+    // Wired end to end. Needs GROQ_API_KEY for the style read and
+    // DATABASE_URL to persist it.
+    status: "live",
     input: "Any design image",
     output: "The style mix behind it, as percentages — not a single guessed label",
     steps: [
@@ -192,8 +194,8 @@ export const MODULES = [
     tagline: "The whole client relationship, in one thread",
     body:
       "Log what the client said, when, and through which channel. Track how many rounds a project has been through, how long each turnaround took, and what you charged for it — with every message readable back into what they probably mean and a reply you could send.",
-    dimension: "originality",
-    // Wired end to end. Needs AI_GATEWAY_API_KEY for interpretation and
+    dimension: "depth",
+    // Wired end to end. Needs GROQ_API_KEY for interpretation and
     // DATABASE_URL to persist the log — no Python service.
     status: "live",
     input: "What the client said, plus the channel, iteration and price",
@@ -207,18 +209,21 @@ export const MODULES = [
   {
     slug: "originality",
     href: "/studio/originality",
-    name: "Distance",
+    name: "Originality",
     tagline: "Check it is yours before you spend a week on it",
     body:
-      "Describe or sketch the direction and see how crowded it already is. Not to talk you out of it — so that you know, up front, how far you are from everything adjacent.",
+      "Describe the direction — or attach a sketch — and get a read on how crowded that territory already is: the movements and work it sits closest to, what's genuinely distinct about it, and moves that would put more daylight between you and the nearest neighbor.",
     dimension: "originality",
-    status: "planned",
-    input: "A direction you are considering, described or sketched",
-    output: "How crowded that space already is, before you spend a week in it",
+    // Wired end to end. Needs GROQ_API_KEY for the read and DATABASE_URL to
+    // persist it. Reads against what the model knows from published,
+    // documented work — not a live index of everything that exists.
+    status: "live",
+    input: "A direction you're considering, described in words, plus an optional sketch",
+    output: "How crowded that space is, its nearest neighbors, and what's distinct about yours",
     steps: [
-      "Compares the direction against known, published work in the same territory",
-      "Measures how close the overlap actually is",
-      "Reports the distance — not a verdict, just what is already out there",
+      "Reads the direction — and the image, if you attach one — against widely-documented movements and work",
+      "Names the closest neighbors and why they're close, not just a single verdict",
+      "Suggests concrete moves that would widen the gap, and says plainly when it isn't sure",
     ],
   },
   {
@@ -228,7 +233,7 @@ export const MODULES = [
     tagline: "Your style, recorded over time",
     body:
       "Your uploads build a picture of how you actually work — the palettes, the type, the moves you return to. It tracks your portfolio numbers, and gives you evidence when someone calls your work a template.",
-    dimension: "typography",
+    dimension: "rhythm",
     status: "partial",
     input: "Your uploads and portfolio links, over time",
     output: "A record of your actual style — evidence, not opinion",
@@ -245,7 +250,7 @@ export const MODULES = [
     tagline: "Know what's actually yours to use",
     body:
       "General, durable principles on public domain, licensing and work-for-hire, plus a country-aware answer to a specific question about a font, image, or asset — always with a plain reminder that this is guidance, not legal advice.",
-    dimension: "balance",
+    dimension: "contrast",
     status: "live",
     input: "A question about an asset, plus the country you're working from",
     output: "General guidance on what's free to use commercially and what needs a license",

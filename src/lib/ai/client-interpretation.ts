@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { generateGrounded, MODELS } from "@/lib/ai/gateway";
+import { generateJson, MODELS } from "@/lib/ai/models";
 
 export const clientInterpretationSchema = z.object({
   readingOfIt: z.string(),
@@ -54,13 +54,16 @@ export async function interpretClientMessage(params: {
   message: string;
   context?: string;
 }): Promise<ClientInterpretation> {
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    throw new Error("AI_GATEWAY_API_KEY is not set — add it to .env.local to use Correspondence.");
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not set — add it to .env.local to use Correspondence.");
   }
 
-  const { text } = await generateGrounded({
+  const { data } = await generateJson({
     model: MODELS.fast,
+    schema: clientInterpretationSchema,
+    schemaName: "client_interpretation",
     system: SYSTEM,
+    maxOutputTokens: 1500,
     messages: [
       {
         role: "user",
@@ -73,8 +76,5 @@ export async function interpretClientMessage(params: {
       },
     ],
   });
-
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const raw = fenced ? fenced[1] : text;
-  return clientInterpretationSchema.parse(JSON.parse(raw.trim()));
+  return data;
 }

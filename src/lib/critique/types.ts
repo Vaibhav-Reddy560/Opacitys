@@ -8,6 +8,9 @@ export const dimensionSchema = z.enum([
   "spacing",
   "balance",
   "originality",
+  "rhythm",
+  "contrast",
+  "depth",
 ]);
 export type Dimension = z.infer<typeof dimensionSchema>;
 

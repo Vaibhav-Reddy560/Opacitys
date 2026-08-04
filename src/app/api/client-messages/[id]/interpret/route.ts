@@ -37,9 +37,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Could not load that entry." }, { status: 503 });
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "AI_GATEWAY_API_KEY is not set — add it to .env.local to interpret entries." },
+      { error: "GROQ_API_KEY is not set — add it to .env.local to interpret entries." },
       { status: 503 },
     );
   }

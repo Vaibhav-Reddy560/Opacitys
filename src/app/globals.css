@@ -50,13 +50,16 @@
   --color-chrome-light: var(--chrome-light);
   --color-chrome-spec: var(--chrome-spec);
 
-  /* Spectral bands — one per critique dimension, in true spectrum order */
+  /* Spectral bands — one per critique dimension, in descending-hue order */
   --color-spectral-hierarchy: var(--spectral-hierarchy);
   --color-spectral-color: var(--spectral-color);
+  --color-spectral-rhythm: var(--spectral-rhythm);
   --color-spectral-typography: var(--spectral-typography);
   --color-spectral-layout: var(--spectral-layout);
+  --color-spectral-contrast: var(--spectral-contrast);
   --color-spectral-spacing: var(--spectral-spacing);
   --color-spectral-balance: var(--spectral-balance);
+  --color-spectral-depth: var(--spectral-depth);
   --color-spectral-originality: var(--spectral-originality);
 
   --radius-sm: calc(var(--radius) * 0.6);
@@ -101,13 +104,18 @@
   --chrome-light: oklch(0.88 0.008 250);
   --chrome-spec: oklch(0.99 0.004 240);
 
-  /* Spectrum: violet -> red, matched to dimension order in the pipeline */
+  /* Spectrum: violet -> red, in strictly descending hue. Must stay in sync
+     with the SPECTRUM record in src/lib/critique/spectrum.ts — note there is
+     no magenta band; `rhythm` sits at 235 (azure), not 330. */
   --spectral-hierarchy: oklch(0.62 0.22 295);
   --spectral-color: oklch(0.62 0.2 265);
+  --spectral-rhythm: oklch(0.69 0.18 235);
   --spectral-typography: oklch(0.75 0.15 205);
   --spectral-layout: oklch(0.78 0.17 165);
+  --spectral-contrast: oklch(0.75 0.18 130);
   --spectral-spacing: oklch(0.85 0.16 95);
   --spectral-balance: oklch(0.75 0.17 55);
+  --spectral-depth: oklch(0.72 0.19 40);
   --spectral-originality: oklch(0.66 0.22 15);
 
   /* Severity — reads against the spectral palette without competing */
@@ -268,6 +276,127 @@
   }
   to {
     stroke-dashoffset: -70;
+  }
+}
+
+/*
+ * Referenced by TitleImage. A band of the spectrum gradient travels across
+ * the wordmark on a zig-zag path (both X and Y drift, non-monotonically —
+ * a straight linear sweep read as too mechanical), masked to its own alpha
+ * so the sheen only lights up the glyphs themselves — the same "thin-film
+ * interference confined to specular highlights" idea PrismaticChrome
+ * renders in WebGL (see that file's `thinFilm`/`iriMask`), done here in CSS
+ * since this title is a raster PNG. Runs continuously and identically
+ * regardless of hover.
+ */
+@keyframes prismatic-sweep {
+  0% {
+    background-position: -40% 30%;
+  }
+  22% {
+    background-position: 10% -20%;
+  }
+  45% {
+    background-position: 55% 45%;
+  }
+  68% {
+    background-position: 95% -10%;
+  }
+  100% {
+    background-position: 170% 20%;
+  }
+}
+
+/*
+ * PARKED, not deleted — a hue-rotate hover effect for TitleImage, pending a
+ * decision on whether to bring it back. To re-enable: add
+ * `group-hover:![animation:prismatic-shimmer_3.2s_ease-in-out_infinite]` to
+ * the <Image> className in title-image.tsx (alongside or instead of the
+ * current scale/glow hover).
+ *
+@keyframes prismatic-shimmer {
+  0% {
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: hue-rotate(180deg) saturate(1.35);
+  }
+  100% {
+    filter: hue-rotate(360deg) saturate(1);
+  }
+}
+*/
+
+/*
+ * Referenced by PrismaticAurora — see that component's doc comment for the
+ * full rationale. Ring rotates continuously; the four blobs each drift on
+ * an independent translate/scale/opacity path (different axes and
+ * magnitudes, staggered negative animation-delays) so they never visibly
+ * sync even though each loop itself is periodic. Transform/opacity only —
+ * stays compositor-only, no layout or paint cost.
+ */
+@keyframes aurora-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes aurora-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.34;
+  }
+  33% {
+    transform: translate(6%, 8%) scale(1.08);
+    opacity: 0.42;
+  }
+  66% {
+    transform: translate(-4%, 5%) scale(0.95);
+    opacity: 0.28;
+  }
+}
+@keyframes aurora-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.32;
+  }
+  40% {
+    transform: translate(-7%, -6%) scale(1.1);
+    opacity: 0.24;
+  }
+  75% {
+    transform: translate(3%, -9%) scale(0.92);
+    opacity: 0.4;
+  }
+}
+@keyframes aurora-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  30% {
+    transform: translate(5%, -7%) scale(0.94);
+    opacity: 0.4;
+  }
+  70% {
+    transform: translate(-6%, -3%) scale(1.06);
+    opacity: 0.22;
+  }
+}
+@keyframes aurora-drift-d {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate(-5%, 7%) scale(1.05);
+    opacity: 0.38;
   }
 }
 

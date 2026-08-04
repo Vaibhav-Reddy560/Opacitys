@@ -6,7 +6,7 @@ import { SPECTRUM, DIMENSION_ORDER } from "@/lib/critique/spectrum";
 import type { ModuleDef } from "@/lib/copy";
 
 /**
- * Nine bespoke schematic diagrams, one per module, replacing the single
+ * Ten bespoke schematic diagrams, one per module, replacing the single
  * paragraph the old module grid gave each feature. Each is built from the
  * brand's existing vocabulary — hairline strokes, the spectral palette,
  * `SPECTRUM`'s colours — rather than stock icons, so they read as part of
@@ -76,7 +76,7 @@ function Frame({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
 }
 
 const DIAGRAMS: Record<ModuleDef["slug"], (p: { accent: string }) => ReactNode> = {
-  // Image frame, three pinned findings, one measured chip, seven score bars.
+  // Image frame, three pinned findings, one measured chip, ten score bars.
   critique: ({ accent }) => (
     <>
       <Frame x={24} y={28} w={148} h={124} />

@@ -19,7 +19,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Wordmark } from "@/components/brand/wordmark";
+import { TitleImage } from "@/components/brand/title-image";
 import { PrismIcon } from "@/components/brand/prism";
 import { MODULES, STATUS_LABEL } from "@/lib/copy";
 import { SPECTRUM } from "@/lib/critique/spectrum";
@@ -49,7 +49,7 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
       {/* Mobile bar */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/[0.07] bg-background/85 px-4 py-3 backdrop-blur-md lg:hidden">
         <Link href="/studio">
-          <Wordmark className="text-[26px] tracking-[0.065em]" interactive={false} shade={0.32} />
+          <TitleImage width={403} height={60} className="h-6 w-[161px] pt-1" />
         </Link>
         <button
           type="button"
@@ -68,8 +68,12 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
         )}
       >
         <div className="flex h-full flex-col p-4">
-          <Link href="/studio" className="mb-7 hidden px-2 pt-2 lg:block">
-            <Wordmark className="text-[28px] tracking-[0.065em]" interactive={false} shade={0.32} />
+          {/* w-[88%] + h-auto scales the wordmark down proportionally — the
+              width/height props carry the PNG's true 6.72:1 ratio, so height
+              follows width instead of being pinned independently (pinning one
+              axis is what squashed this image in an earlier pass). */}
+          <Link href="/studio" className="mb-7 hidden px-2 pt-6 lg:block">
+            <TitleImage width={591} height={88} className="w-[88%] h-auto" priority />
           </Link>
 
           <nav className="flex-1 space-y-0.5">
@@ -82,6 +86,11 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
                   key={m.slug}
                   href={m.href}
                   onClick={() => setOpen(false)}
+                  // On the row, not just the PrismIcon inside it — otherwise
+                  // the cursor only picks up the module's colour over the
+                  // small circle, and stays rainbow across the rest of the
+                  // row you are actually hovering. See custom-cursor.tsx.
+                  data-cursor-accent={accent}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-[13.5px] transition-colors",
                     active

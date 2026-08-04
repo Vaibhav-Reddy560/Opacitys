@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateGrounded, MODELS } from "@/lib/ai/gateway";
+import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -28,35 +28,37 @@ Rules:
 Return ONLY valid JSON: { "cleanedText": "..." }`;
 
 // POST /api/voice/cleanup -> the second stage of voice-to-text: takes the raw
-// accumulated transcript from Deepgram's streaming ASR and passes it through
-// Claude (the same AI_GATEWAY_API_KEY pipeline as every other AI feature) to
-// strip filler words and fix formatting — the actual "high-end" step.
+// transcript from Groq's Whisper transcription and passes it through Groq's
+// Llama (the same GROQ_API_KEY pipeline as every other AI feature) to strip
+// filler words and fix formatting — the actual "high-end" step.
 export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "A transcript is required." }, { status: 400 });
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "AI_GATEWAY_API_KEY is not set — add it to .env.local to clean up dictation." },
+      { error: "GROQ_API_KEY is not set — add it to .env.local to clean up dictation." },
       { status: 503 },
     );
   }
 
   try {
-    const { text } = await generateGrounded({
+    const { data } = await generateJson({
       model: MODELS.fast,
+      schema: responseSchema,
+      schemaName: "cleaned_transcript",
       system: SYSTEM,
+      maxOutputTokens: 1000,
       messages: [{ role: "user", content: parsed.data.rawTranscript }],
     });
 
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const raw = fenced ? fenced[1] : text;
-    const result = responseSchema.parse(JSON.parse(raw.trim()));
-
-    return NextResponse.json(result);
+    return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof GroqRateLimitError) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     return NextResponse.json(
       {
         error:

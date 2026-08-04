@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PrismPanel } from "@/components/brand/prism";
 import { ChromeButton } from "@/components/ui/chrome-button";
+import { VoiceMicButton } from "@/components/voice/voice-mic-button";
 import { SPECTRUM } from "@/lib/critique/spectrum";
+import { fetchJson } from "@/lib/http";
 
 const COUNTRIES = [
   "United States",
@@ -40,13 +42,11 @@ export function RightsQaPanel() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch("/api/rights/qa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, country }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Could not put that together.");
+      const json = await fetchJson<Result>(
+        "/api/rights/qa",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, country }) },
+        "Could not put that together.",
+      );
       setResult(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -81,9 +81,12 @@ export function RightsQaPanel() {
         ))}
       </select>
 
-      <label htmlFor="rights-question" className="mt-5 block text-[11px] uppercase tracking-[0.2em] text-foreground/52">
-        Your question
-      </label>
+      <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
+        <label htmlFor="rights-question" className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">
+          Your question
+        </label>
+        <VoiceMicButton onFinalText={(t) => setQuestion((prev) => (prev ? `${prev} ${t}` : t))} />
+      </div>
       <textarea
         id="rights-question"
         value={question}

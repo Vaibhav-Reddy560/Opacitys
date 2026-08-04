@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
+import { readSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,6 @@ const MAX_BYTES = 25 * 1024 * 1024; // 25MB
 const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 const querySchema = z.object({
-  userId: z.string().uuid(),
   projectId: z.string().uuid().optional(),
   // Read client-side via the browser Image API before upload — avoids
   // pulling in a server-side image-decoding dependency for Phase 0.
@@ -18,18 +18,31 @@ const querySchema = z.object({
   height: z.coerce.number().int().positive().optional(),
 });
 
-// POST /api/upload?userId=...&projectId=...&width=...&height=...  (body: raw
-// file bytes, Content-Type set to the image mime type)
+// POST /api/upload?projectId=...&width=...&height=...  (body: raw file
+// bytes, Content-Type set to the image mime type). The uploader is always
+// the signed-in session, never a client-supplied id — the old version took
+// userId as a query param, which meant anyone could upload and attribute
+// an asset to any account by just changing the value in the URL.
 export async function POST(req: Request) {
+  const session = await readSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in to upload a design." }, { status: 401 });
+  }
+  if (session.kind === "guest") {
+    return NextResponse.json(
+      { error: "Guest sessions aren't saved — create an account to run this." },
+      { status: 403 },
+    );
+  }
+
   const url = new URL(req.url);
   const parsedQuery = querySchema.safeParse({
-    userId: url.searchParams.get("userId"),
     projectId: url.searchParams.get("projectId") ?? undefined,
     width: url.searchParams.get("width") ?? undefined,
     height: url.searchParams.get("height") ?? undefined,
   });
   if (!parsedQuery.success) {
-    return NextResponse.json({ error: "userId (uuid) query param is required" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid query parameters." }, { status: 400 });
   }
 
   const mime = req.headers.get("content-type") ?? "";
@@ -49,14 +62,14 @@ export async function POST(req: Request) {
   }
 
   const ext = mime.split("/")[1];
-  const storageKey = `assets/${parsedQuery.data.userId}/${nanoid()}.${ext}`;
+  const storageKey = `assets/${session.userId}/${nanoid()}.${ext}`;
 
   // `public` here means "unauthenticated fetch of this exact URL", not
   // "listed/discoverable" — Vercel Blob URLs are unguessable. Public access
-  // is required in practice: the Python analyzer service and the Claude/
-  // Replicate/fal APIs all fetch the image by URL and can't present our
-  // app's auth. If stricter access is needed later, switch to `private` and
-  // proxy bytes through a server route instead of passing the URL through.
+  // is required in practice: the measurement pass and the Groq vision calls
+  // all fetch the image by URL and can't present our app's auth. If
+  // stricter access is needed later, switch to `private` and proxy bytes
+  // through a server route instead of passing the URL through.
   const blob = await put(storageKey, buffer, {
     access: "public",
     contentType: mime,
@@ -66,7 +79,7 @@ export async function POST(req: Request) {
   const [asset] = await db
     .insert(schema.assets)
     .values({
-      userId: parsedQuery.data.userId,
+      userId: session.userId,
       projectId: parsedQuery.data.projectId ?? null,
       storageKey: blob.url,
       mime,

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { usePointerSpot } from "@/lib/use-pointer-spot";
-import { SPECTRUM_GRADIENT } from "@/lib/critique/spectrum";
+import { SPECTRUM_GRADIENT, SPECTRUM_RULE_GRADIENT } from "@/lib/critique/spectrum";
 
 /**
  * Prismatic chrome element system.
@@ -44,6 +44,11 @@ export function PrismIcon({
 
   return (
     <span
+      // Published for CustomCursor: while the pointer is inside an accented
+      // element, the cursor's halo drops its rainbow and matches this hue, so
+      // the cursor and the thing it is over agree on a colour. See
+      // custom-cursor.tsx.
+      data-cursor-accent={accent}
       className={cn("group/icon relative inline-grid shrink-0 place-items-center", className)}
       style={{ width: size, height: size }}
     >
@@ -144,7 +149,7 @@ export function PrismRule({ className }: { className?: string }) {
       aria-hidden
       className={cn("block h-px w-full", className)}
       style={{
-        background: `linear-gradient(90deg, transparent, ${SPECTRUM_GRADIENT}, transparent)`,
+        background: SPECTRUM_RULE_GRADIENT,
         opacity: 0.55,
       }}
     />
@@ -213,6 +218,8 @@ export function PrismPanel({
   return (
     <div
       ref={ref}
+      // Published for CustomCursor — see the note on PrismIcon above.
+      data-cursor-accent={accent}
       className={cn(
         "surface-chrome edge-highlight relative isolate overflow-hidden rounded-2xl",
         className,

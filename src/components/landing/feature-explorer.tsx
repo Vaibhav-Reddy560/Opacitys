@@ -83,6 +83,7 @@ export function FeatureExplorer() {
                 aria-controls={`feature-panel-${m.slug}`}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setActive(m.slug)}
+                data-cursor-accent={a}
                 className={cn(
                   "shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors",
                   isActive
@@ -121,6 +122,9 @@ export function FeatureExplorer() {
               aria-controls={`feature-panel-${m.slug}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(m.slug)}
+              // Tints the cursor halo to this module's colour — see
+              // custom-cursor.tsx. On the whole row, not just the indicator.
+              data-cursor-accent={a}
               className={cn(
                 "group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-left text-[13.5px] transition-colors",
                 isActive

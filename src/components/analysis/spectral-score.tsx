@@ -10,7 +10,7 @@ import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
  *
  * A single progress ring would throw away the per-dimension breakdown that
  * is the whole point of the critique; this shows the composite number and
- * its seven components in one read.
+ * its ten components in one read.
  */
 export function SpectralScore({
   overall,

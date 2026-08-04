@@ -25,19 +25,20 @@ export function VoiceMicButton({
   className?: string;
   size?: number;
 }) {
-  const { state, interimText, error, start, stop } = useVoiceToText(onFinalText);
+  const { state, error, start, stop } = useVoiceToText(onFinalText);
+  const busy = state === "transcribing" || state === "processing";
 
   return (
     <div className={cn("inline-flex items-start gap-2.5", className)}>
       <button
         type="button"
         onClick={state === "recording" ? stop : start}
-        disabled={state === "requesting-permission" || state === "processing"}
+        disabled={state === "requesting-permission" || busy}
         aria-label={
           state === "recording"
             ? "Stop dictating"
-            : state === "processing"
-              ? "Cleaning up dictation"
+            : busy
+              ? "Working on dictation"
               : "Start dictating"
         }
         className={cn(
@@ -56,7 +57,7 @@ export function VoiceMicButton({
             className="absolute inset-0 animate-ping rounded-full bg-[oklch(0.66_0.22_15)] opacity-40"
           />
         )}
-        {state === "processing" ? (
+        {busy ? (
           <Loader2 className="size-4 animate-spin" aria-hidden />
         ) : state === "error" ? (
           <MicOff className="size-4" aria-hidden />
@@ -66,15 +67,8 @@ export function VoiceMicButton({
       </button>
 
       <div className="min-w-0 pt-1.5 text-[12px] leading-relaxed">
-        {state === "recording" && (
-          <p className="text-foreground/62">
-            {interimText ? (
-              <span className="italic text-foreground/75">{interimText}</span>
-            ) : (
-              "Listening…"
-            )}
-          </p>
-        )}
+        {state === "recording" && <p className="text-foreground/62">Recording…</p>}
+        {state === "transcribing" && <p className="text-foreground/62">Transcribing…</p>}
         {state === "processing" && <p className="text-foreground/62">Cleaning up…</p>}
         {state === "error" && error && (
           <p role="alert" style={{ color: "oklch(0.72 0.19 18)" }}>

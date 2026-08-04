@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PrismaticChrome } from "@/components/visual/prismatic-chrome";
-import { Wordmark } from "@/components/brand/wordmark";
+import { TitleImage } from "@/components/brand/title-image";
 import { Reveal } from "@/components/motion/reveal";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { Parallax } from "@/components/motion/parallax";
@@ -12,6 +11,7 @@ import { FeatureExplorer } from "@/components/landing/feature-explorer";
 import { StickyFrictions } from "@/components/landing/sticky-frictions";
 import { SiteNav } from "@/components/landing/site-nav";
 import { ScrollProgress } from "@/components/landing/scroll-progress";
+import { PrismaticAurora } from "@/components/visual/prismatic-aurora";
 import { DimensionMarquee } from "@/components/landing/dimension-marquee";
 import { OpacityReveal } from "@/components/landing/opacity-reveal";
 import { SpectrumSplit } from "@/components/landing/spectrum-split";
@@ -31,26 +31,27 @@ export default function Home() {
           className="relative isolate flex flex-col items-center justify-center overflow-hidden px-6"
           style={{ minHeight: "min(100svh, 840px)" }}
         >
-          <PrismaticChrome
-            className="absolute inset-0 -z-20 h-full w-full"
-            intensity={0.92}
-            spectrum={1.05}
-            speed={0.8}
-          />
+          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" />
           <div
             aria-hidden
             className="absolute inset-0 -z-10"
             style={{
               background: [
-                "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.9) 0%, oklch(0.145 0.012 265 / 0.62) 52%, transparent 82%)",
-                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.55) 0%, oklch(0.145 0.012 265 / 0.2) 30%, oklch(0.145 0.012 265 / 0.2) 70%, oklch(0.145 0.012 265 / 0.75) 100%)",
+                "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
+                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
               ].join(", "),
             }}
           />
 
           <div className="relative flex w-full max-w-5xl flex-col items-center text-center">
             <Reveal delay={0.05}>
-              <Wordmark className="text-[clamp(3.5rem,15vw,11rem)] tracking-[0.06em]" />
+              <TitleImage
+                width={1200}
+                height={400}
+                className="w-full max-w-3xl h-auto"
+                size="hero"
+                priority
+              />
             </Reveal>
 
             <Reveal delay={0.2}>
@@ -133,7 +134,7 @@ export default function Home() {
           </Reveal>
         </section>
 
-        {/* Belt — a continuous reminder of the seven-dimension vocabulary */}
+        {/* Belt — a continuous reminder of the ten-dimension vocabulary */}
         <div className="border-y border-white/[0.06] bg-white/[0.012] py-4">
           <DimensionMarquee />
         </div>
@@ -225,7 +226,7 @@ export default function Home() {
                 className="text-balance mt-5 block max-w-2xl text-3xl leading-[1.14] tracking-tight sm:text-[2.6rem]"
               >
                 <span style={{ fontVariationSettings: '"wght" 500' }}>
-                  One reading, split into seven.
+                  One reading, split into ten.
                 </span>
               </ScrollReveal>
               <p className="text-balance mt-4 max-w-xl text-[15px] leading-relaxed text-foreground/62">
@@ -240,7 +241,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------------- */}
-        {/* The ten rooms                                                  */}
+        {/* The ten features                                               */}
         {/* ------------------------------------------------------------- */}
         <section
           id="studio"
@@ -256,7 +257,7 @@ export default function Home() {
                 className="text-balance mt-5 block max-w-2xl text-3xl leading-[1.14] tracking-tight sm:text-[2.6rem]"
               >
                 <span style={{ fontVariationSettings: '"wght" 500' }}>
-                  Ten rooms, one job: raise the opacity.
+                  Ten features, one job: raise the opacity.
                 </span>
               </ScrollReveal>
               <p className="text-balance mt-4 max-w-2xl text-[15px] leading-relaxed text-foreground/62">
@@ -276,19 +277,13 @@ export default function Home() {
         {/* Close                                                          */}
         {/* ------------------------------------------------------------- */}
         <section className="relative isolate overflow-hidden px-6 py-32 sm:py-44">
-          <PrismaticChrome
-            className="absolute inset-0 -z-20 h-full w-full"
-            intensity={0.6}
-            spectrum={1.15}
-            speed={0.45}
-            resolutionScale={0.4}
-          />
+          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" />
           <div
             aria-hidden
             className="absolute inset-0 -z-10"
             style={{
               background:
-                "linear-gradient(to bottom, oklch(0.145 0.012 265) 0%, oklch(0.145 0.012 265 / 0.68) 42%, oklch(0.145 0.012 265 / 0.9) 100%)",
+                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.5) 0%, oklch(0.145 0.012 265 / 0.3) 42%, oklch(0.145 0.012 265 / 0.65) 100%)",
             }}
           />
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
@@ -313,10 +308,7 @@ export default function Home() {
 
         <footer className="border-t border-white/[0.06] px-5 py-10 sm:px-8">
           <div className="mx-auto flex max-w-[1680px] flex-col items-center justify-between gap-4 sm:flex-row">
-            <Wordmark
-              className="mt-[3px] ml-2 text-[30px] tracking-[0.075em]"
-              interactive={false}
-            />
+            <TitleImage width={150} height={60} className="h-[26px] w-auto" />
             <p className="text-xs text-foreground/50">
               For designers, by someone who kept hitting the same walls.
             </p>

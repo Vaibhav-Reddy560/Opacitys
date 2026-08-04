@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateGrounded, MODELS } from "@/lib/ai/gateway";
+import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,17 +50,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A question and country are required." }, { status: 400 });
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "AI_GATEWAY_API_KEY is not set — add it to .env.local to use Clearance." },
+      { error: "GROQ_API_KEY is not set — add it to .env.local to use Clearance." },
       { status: 503 },
     );
   }
 
   try {
-    const { text } = await generateGrounded({
+    const { data } = await generateJson({
       model: MODELS.fast,
+      schema: responseSchema,
+      schemaName: "rights_answer",
       system: SYSTEM,
+      maxOutputTokens: 1200,
       messages: [
         {
           role: "user",
@@ -69,12 +72,11 @@ export async function POST(req: Request) {
       ],
     });
 
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const raw = fenced ? fenced[1] : text;
-    const result = responseSchema.parse(JSON.parse(raw.trim()));
-
-    return NextResponse.json(result);
+    return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof GroqRateLimitError) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     return NextResponse.json(
       {
         error:

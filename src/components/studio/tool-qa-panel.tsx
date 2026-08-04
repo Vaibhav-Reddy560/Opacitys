@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PrismPanel } from "@/components/brand/prism";
 import { ChromeButton } from "@/components/ui/chrome-button";
+import { VoiceMicButton } from "@/components/voice/voice-mic-button";
 import { SPECTRUM } from "@/lib/critique/spectrum";
+import { fetchJson } from "@/lib/http";
 
 interface Result {
   answer: string;
@@ -23,13 +25,11 @@ export function ToolQaPanel() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch("/api/tools/qa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Could not answer that.");
+      const json = await fetchJson<Result>(
+        "/api/tools/qa",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) },
+        "Could not answer that.",
+      );
       setResult(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -47,12 +47,15 @@ export function ToolQaPanel() {
         Mainstream or emerging — including the ones that haven&rsquo;t gone mainstream yet.
       </p>
 
+      <div className="mt-4 flex justify-end">
+        <VoiceMicButton onFinalText={(t) => setQuestion((prev) => (prev ? `${prev} ${t}` : t))} />
+      </div>
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         rows={3}
         placeholder="e.g. What is Kittl good for, and how is it different from Canva?"
-        className="mt-4 w-full resize-y rounded-xl border border-white/[0.09] bg-black/25 p-3.5 text-[13.5px] leading-relaxed text-foreground/90 placeholder:text-foreground/50 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
+        className="mt-2 w-full resize-y rounded-xl border border-white/[0.09] bg-black/25 p-3.5 text-[13.5px] leading-relaxed text-foreground/90 placeholder:text-foreground/50 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
       />
 
       <div className="mt-4">

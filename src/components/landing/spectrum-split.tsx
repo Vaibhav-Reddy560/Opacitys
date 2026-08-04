@@ -12,7 +12,7 @@ import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
 
 /**
  * Signature interaction C — a beam of white light meets a prism and fans
- * into the seven critique dimensions as the section scrolls.
+ * into the ten critique dimensions as the section scrolls.
  *
  * GEOMETRY. The previous version fanned rays across too wide an angle for
  * its own viewBox: the outer two (hierarchy/violet, originality/red) exited
@@ -147,7 +147,11 @@ export function SpectrumSplit() {
   );
 }
 
-const BAND_COUNT = 7;
+// Derived from DIMENSION_ORDER, never hardcoded: this was pinned at 7 while
+// the palette grew to 10, which widened the fan to +-54deg instead of +-27deg
+// and pushed the last three rays (plus their end dots and labels) below the
+// viewBox, where they silently vanished.
+const BAND_COUNT = DIMENSION_ORDER.length;
 const FAN_HALF_ANGLE = 27;
 const ANGLE_STEP = (FAN_HALF_ANGLE * 2) / (BAND_COUNT - 1);
 
@@ -200,7 +204,7 @@ function SpectrumBand({
         style={reduce ? undefined : { pathLength }}
       />
       {/* A short bright pulse chasing down the resolved band, staggered per
-          band so the seven don't pulse in lockstep. This is a *second*
+          band so the bands don't pulse in lockstep. This is a *second*
           element rather than reusing the line above: Motion implements its
           `pathLength` style by writing stroke-dasharray/dashoffset itself,
           which would fight a CSS keyframe animating the same properties on

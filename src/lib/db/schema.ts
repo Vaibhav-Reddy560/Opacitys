@@ -45,6 +45,9 @@ export const dimensionEnum = pgEnum("dimension", [
   "spacing",
   "balance",
   "originality",
+  "rhythm",
+  "contrast",
+  "depth",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -112,9 +115,16 @@ export const analyses = pgTable("analyses", {
   assetId: uuid("asset_id")
     .notNull()
     .references(() => assets.id, { onDelete: "cascade" }),
+  // Which module this measurement pass belongs to — critique, identify, or
+  // (image-attached) originality — all three share the same Track A
+  // measurement layer and analyses/assets tables.
+  kind: text("kind").notNull().default("critique"),
   status: analysisStatusEnum("status").notNull().default("queued"),
   pipelineVersion: text("pipeline_version").notNull(),
   raw: jsonb("raw"), // full Track A analyzer output
+  // Real failure reason for a `failed` status — surfaced to the user
+  // instead of a generic "something went wrong".
+  error: text("error"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -163,12 +173,14 @@ export const critiqueFindings = pgTable("critique_findings", {
 });
 
 // ---------------------------------------------------------------------------
-// Style taxonomy (Phase 2)
+// Style taxonomy — Identify
 // ---------------------------------------------------------------------------
 
 export const styleTaxonomy = pgTable("style_taxonomy", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
+  // Unique so the curated list in src/lib/identify/taxonomy.ts can upsert
+  // idempotently on first use — no separate seed migration/script needed.
+  name: text("name").notNull().unique(),
   description: text("description"),
   era: text("era"),
   exemplarKeys: text("exemplar_keys").array(),
@@ -184,6 +196,20 @@ export const styleScores = pgTable("style_scores", {
     .notNull()
     .references(() => styleTaxonomy.id),
   weight: real("weight").notNull(), // e.g. 0.4 for "40% Swiss Typography"
+  // Which measured facts / visual cues the read pointed to for this style —
+  // shown to the user so "show the evidence" is actually true.
+  evidence: jsonb("evidence"),
+});
+
+// One read (summary + which model produced it) per analysis — the weighted
+// breakdown itself lives in style_scores, one row per style in the blend.
+export const styleReads = pgTable("style_reads", {
+  analysisId: uuid("analysis_id")
+    .primaryKey()
+    .references(() => analyses.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ---------------------------------------------------------------------------
@@ -260,11 +286,22 @@ export const trendSources = pgTable("trend_sources", {
 
 export const originalityChecks = pgTable("originality_checks", {
   id: uuid("id").primaryKey().defaultRandom(),
-  assetId: uuid("asset_id")
+  userId: uuid("user_id")
     .notNull()
-    .references(() => assets.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Nullable: a check can be text-only (a described direction with no
+  // sketch attached) — assetId is only set when an image was uploaded.
+  assetId: uuid("asset_id").references(() => assets.id, { onDelete: "cascade" }),
+  inputText: text("input_text").notNull(),
+  // Neighbours the model named, each { name, kind, era, whyClose, closeness }.
   nearest: jsonb("nearest"),
+  // 0-100 "how crowded is this direction" read.
   saturationScore: real("saturation_score"),
+  // Full structured result (distinctives, moves, confidence, basis) beyond
+  // what nearest/saturationScore capture individually.
+  result: jsonb("result"),
+  model: text("model"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ---------------------------------------------------------------------------

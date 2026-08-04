@@ -60,6 +60,7 @@ export function AnalysisResult({
   );
   const [result, setResult] = useState<StreamComplete | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [failureReason, setFailureReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (stage === "complete" || stage === "failed") return;
@@ -80,7 +81,13 @@ export function AnalysisResult({
       }
       source.close();
     });
-    source.addEventListener("failed", () => {
+    source.addEventListener("failed", (e) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data);
+        if (typeof data?.error === "string") setFailureReason(data.error);
+      } catch {
+        // no parseable reason — the generic message below still shows
+      }
       setStage("failed");
       source.close();
     });
@@ -119,8 +126,7 @@ export function AnalysisResult({
             Analysis failed
           </p>
           <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-foreground/55">
-            Check that the analyzer service is running and reachable at
-            ANALYZER_SERVICE_URL.
+            {failureReason ?? "Something went wrong measuring this design. Try uploading it again."}
           </p>
         </div>
       </Shell>

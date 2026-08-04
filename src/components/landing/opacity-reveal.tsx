@@ -28,7 +28,9 @@ export function OpacityReveal() {
 
   // Scoped per instance so a second OpacityReveal on the page (there isn't
   // one today, but nothing stops there being one) doesn't share a gradient.
-  const gradId = `or-light-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const gradId = `or-light-${uid}`;
+  const barId = `or-bar-${uid}`;
 
   const leftPct = useTransform(pct, (v) => `${v}%`);
   // The round handle is centred on this position via -translate-x-1/2, so at
@@ -129,39 +131,54 @@ export function OpacityReveal() {
             ))}
           </motion.svg>
 
-          {/* Layer 2 — a light body: a soft violet -> blue -> cyan radial
-              inside a chrome hairline ring, one offset ring overlapping it,
-              and a single bar anchored to the bottom baseline. */}
+          {/* Layer 2 — a light body: a lit sphere inside a chrome hairline
+              ring, one offset ring overlapping it, and a spectral accent bar.
+
+              The radial runs cyan -> blue -> violet OUTWARD, so the bright
+              point sits where the light source is and violet only appears as
+              rim falloff. Reversed (violet innermost) it put a saturated
+              purple blob in the middle of a blue circle, which read as a
+              bruise rather than as lighting. */}
           <motion.svg
             style={{ opacity: bodyOpacity }}
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 300 375"
           >
             <defs>
-              <radialGradient id={gradId} cx="38%" cy="34%" r="72%">
-                <stop offset="0%" stopColor={SPECTRUM.hierarchy.color} stopOpacity="0.85" />
-                <stop offset="55%" stopColor={SPECTRUM.color.color} stopOpacity="0.5" />
-                <stop offset="100%" stopColor={SPECTRUM.typography.color} stopOpacity="0.1" />
+              <radialGradient id={gradId} cx="36%" cy="30%" r="78%">
+                <stop offset="0%" stopColor={SPECTRUM.typography.color} stopOpacity="0.92" />
+                <stop offset="46%" stopColor={SPECTRUM.color.color} stopOpacity="0.6" />
+                <stop offset="100%" stopColor={SPECTRUM.hierarchy.color} stopOpacity="0.16" />
               </radialGradient>
+              <linearGradient id={barId} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={SPECTRUM.hierarchy.color} />
+                <stop offset="50%" stopColor={SPECTRUM.typography.color} />
+                <stop offset="100%" stopColor={SPECTRUM.spacing.color} />
+              </linearGradient>
             </defs>
             <circle cx="150" cy="150" r="88" fill={`url(#${gradId})`} />
-            <circle cx="150" cy="150" r="88" fill="none" stroke="white" strokeOpacity="0.5" />
+            <circle cx="150" cy="150" r="88" fill="none" stroke="white" strokeOpacity="0.45" />
             <circle
               cx="192"
               cy="116"
               r="56"
               fill="none"
               stroke="white"
-              strokeOpacity="0.22"
+              strokeOpacity="0.2"
               strokeWidth="0.75"
             />
-            <rect x="20" y="291" width="150" height="8" fill={SPECTRUM.balance.color} opacity="0.55" />
+            {/* Sits clear of the lockup below. At y=291 this was a flat
+                55%-opacity orange running straight through the headline,
+                which resolved to a muddy brown block. */}
+            <rect x="20" y="250" width="150" height="5" rx="2.5" fill={`url(#${barId})`} opacity="0.9" />
           </motion.svg>
 
           {/* Layer 3 — a real lockup: what the piece is, numbered, and the
-              line it exists to prove. "FIELD NOTES / A SEASON, OBSERVED"
-              used to sit here meaning nothing; every line here names
-              something the system actually is. */}
+              line it exists to prove. Every line names something the system
+              actually is — "Fully Resolved" is the slider's own right-hand
+              label, so dragging to 100 makes the poster state its own end
+              state. (Earlier drafts read "Field Notes" and then "Light,
+              Split", both of which meant nothing.) */}
           <motion.div style={{ opacity: typeOpacity }} className="absolute inset-0 p-6">
             <div className="flex items-start justify-between">
               <span className="text-[9px] uppercase tracking-[0.16em] text-white/55">
@@ -174,19 +191,19 @@ export function OpacityReveal() {
                 className="text-[38px] leading-[0.9] text-white"
                 style={{ fontVariationSettings: '"wght" 600' }}
               >
-                Light,
+                Fully
                 <br />
-                Split
+                Resolved
               </p>
               <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-white/50">
-                Seven ways to read one image
+                Ten ways to read one image
               </p>
             </div>
           </motion.div>
 
           {/* Layer 4 — the finish: a diagonal specular sweep, a hairline
-              inner chrome rim, and the seven spectral ticks arriving at
-              full strength — the same seven dimensions the marquee and the
+              inner chrome rim, and the ten spectral ticks arriving at
+              full strength — the same ten dimensions the marquee and the
               spectrum-split diagram use, so the poster ends on the exact
               vocabulary the rest of the page is built from. */}
           <motion.div aria-hidden style={{ opacity: finishOpacity }} className="absolute inset-0">

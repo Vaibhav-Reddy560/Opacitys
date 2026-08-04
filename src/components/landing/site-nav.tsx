@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Wordmark } from "@/components/brand/wordmark";
+import { TitleImage } from "@/components/brand/title-image";
 
 export function SiteNav() {
   return (
@@ -13,15 +13,7 @@ export function SiteNav() {
     >
       <nav className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-4 sm:px-8">
         <Link href="/" aria-label="Opacitys home">
-          {/* The wordmark's box is now cropped tight to the glyphs (no
-              descender headroom), while the sibling nav text's line-height
-              carries extra space below its baseline. Centered against each
-              other by flex, the tight glyph box reads as sitting above the
-              text's optical middle — this nudges it down to match. */}
-          <Wordmark
-            className="mt-[6px] text-[30px] tracking-[0.075em]"
-            interactive={false}
-          />
+          <TitleImage width={150} height={60} className="h-[26px] w-auto pt-1" />
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-5">

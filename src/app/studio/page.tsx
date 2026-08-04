@@ -44,7 +44,7 @@ export default function StudioHome() {
           Where would you like to raise the opacity?
         </h1>
         <p className="text-pretty mt-4 max-w-xl text-[14.5px] leading-relaxed text-foreground/62">
-          Ten rooms, one idea: take something faint and bring it up until it is
+          Ten features, one idea: take something faint and bring it up until it is
           fully there. Start anywhere — you do not need a finished file.
         </p>
       </header>
@@ -76,7 +76,7 @@ export default function StudioHome() {
 
       <div className="mb-6 flex items-center gap-4">
         <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">
-          Rooms
+          Features
         </h2>
         <PrismRule className="flex-1" />
       </div>
