@@ -97,8 +97,14 @@ export function SpectralScore({
           transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
           <div
-            className="text-chrome text-6xl leading-none tabular-nums"
-            style={{ fontVariationSettings: '"wght" 600' }}
+            className="text-6xl leading-none tabular-nums"
+            style={{
+              fontVariationSettings: '"wght" 600',
+              // Was `.text-chrome` — a gradient with a dark stop at its
+              // exact midpoint, which cut a grey band straight through the
+              // middle of this number. A solid, bright fill can't do that.
+              color: "oklch(0.97 0.005 245)",
+            }}
           >
             {Math.round(overall)}
           </div>

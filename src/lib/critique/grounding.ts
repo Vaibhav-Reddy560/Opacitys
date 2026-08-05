@@ -77,12 +77,56 @@ function computeScores(findings: TrackAFinding[]): {
 }
 
 /** Plain-language fallback used when the model call fails or skips a
- * finding — degrades the prose, never drops the finding itself. Leads with
- * what the finding is actually about (the dimension's blurb) rather than
- * opening with the raw number, same rule the model prompt follows, so a
- * degraded response doesn't read as more robotic than a normal one. */
+ * finding — degrades the prose, never drops the finding itself.
+ *
+ * Written per dimension rather than generically: each of the six
+ * deterministic analyzers (see src/lib/measure/analyzers) measures something
+ * specific enough — a contrast ratio, how off-center the visual weight is,
+ * how many type sizes are on the page — that a template can say what's
+ * actually wrong in plain terms, not just restate the number. The number
+ * still appears, but as evidence after the claim, not as the claim itself. */
+const FALLBACK_COPY: Partial<
+  Record<Dimension, (value: number, lo: number, hi: number) => { message: string; fix: string }>
+> = {
+  color: (value, lo) => ({
+    message: `The text or shapes here don't have enough contrast against their background to read comfortably — it measures ${value}:1, short of the ${lo}:1 minimum for easy reading.`,
+    fix: `Darken the foreground or lighten the background until the contrast ratio reaches at least ${lo}:1.`,
+  }),
+  hierarchy: (value, lo) => ({
+    message: `There's no clear focal point near the top of this design — only ${Math.round(value * 100)}% of the visual weight sits there, short of the ${Math.round(lo * 100)}% a strong first impression needs.`,
+    fix: `Make the most important element bigger, bolder, or move it higher so it's the first thing a viewer's eye catches.`,
+  }),
+  layout: (value, lo) => ({
+    message: `Not everything here lines up to a shared edge — only ${Math.round(value * 100)}% of the elements align to the same grid, short of the ${Math.round(lo * 100)}% a tidy layout needs.`,
+    fix: `Snap these elements to the same left edge, column, or baseline grid.`,
+  }),
+  spacing: (value, _lo, hi) => ({
+    message: `The gaps between elements here are inconsistent — spacing varies by ${Math.round(value * 100)}%, more than the ${Math.round(hi * 100)}% a calm, deliberate layout should have.`,
+    fix: `Snap the gaps between these elements to a consistent spacing scale, like multiples of 8px.`,
+  }),
+  typography: (value, lo, hi) =>
+    value > hi
+      ? {
+          message: `This design uses ${value} different text sizes — more than the ${hi} a clear type hierarchy needs, which makes it harder to tell what matters most.`,
+          fix: `Consolidate down to about ${hi} sizes that step up on a consistent scale, e.g. roughly 1.25x each step.`,
+        }
+      : {
+          message: `This design only uses ${value} text size, where at least ${lo} would let size itself tell the reader what's most important.`,
+          fix: `Introduce at least ${lo} distinct sizes so headings, subheads and body text are visually distinct.`,
+        },
+  balance: (value, _lo, hi) => ({
+    message: `The visual weight of this design leans to one side — its center of mass sits ${Math.round(value * 100)}% off the true center, more than the ${Math.round(hi * 100)}% that still reads as balanced.`,
+    fix: `Add visual weight — a shape, image, or block of text — on the lighter side, or move a heavy element back toward the center.`,
+  }),
+};
+
 function templatedNote(f: TrackAFinding): { message: string; fix: string } {
   const [lo, hi] = f.measured.expected;
+  const copy = FALLBACK_COPY[f.dimension];
+  if (copy) return copy(f.measured.value, lo, hi);
+  // Only reachable for dimensions with no deterministic analyzer (rhythm,
+  // contrast, depth, originality) — Track A never actually produces a
+  // finding for those, but this keeps the function total over `Dimension`.
   const dim = SPECTRUM[f.dimension];
   const direction = f.measured.value < lo ? "short of" : "past";
   return {

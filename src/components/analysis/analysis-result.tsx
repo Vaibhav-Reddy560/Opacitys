@@ -146,29 +146,73 @@ export function AnalysisResult({
 
   return (
     <Shell>
-      {/* items-start: without it, this grid row stretches to match the
-          taller sidebar and the canvas — sized to the image, not the row —
-          just sits in a tall box with dead space below it. */}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <motion.div
-          initial={reduce ? false : { opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <AnnotatedCanvas
-            imageUrl={imageUrl}
-            imageWidth={imageWidth}
-            findings={canvasFindings}
-            activeId={activeId}
-            onSelect={setActiveId}
-          />
-        </motion.div>
+      {/* Findings live in THIS column, stacked directly under the image —
+          not in a separate grid row. A grid row is exactly as tall as its
+          tallest column regardless of items-start (that only stops the
+          shorter column's own box from being stretched — it doesn't stop
+          the row itself from reserving the taller column's height), so
+          putting findings in a sibling column left a dead gap the height
+          of the sidebar between a short image and the findings list below
+          it. Stacking them in the same column means findings start right
+          where the image ends. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-8">
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <AnnotatedCanvas
+              imageUrl={imageUrl}
+              imageWidth={imageWidth}
+              findings={canvasFindings}
+              activeId={activeId}
+              onSelect={setActiveId}
+            />
+          </motion.div>
 
+          <div>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">
+                Findings
+              </h2>
+              <span className="font-mono text-[11px] text-foreground/50">
+                {result.findings.length}
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AnimatePresence mode="popLayout">
+                {result.findings.map((f, i) => (
+                  <FindingCard
+                    key={f.id}
+                    finding={f}
+                    index={i}
+                    active={activeId === f.id}
+                    onHover={setActiveId}
+                  />
+                ))}
+              </AnimatePresence>
+
+              {result.findings.length === 0 && (
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-6 text-center sm:col-span-2">
+                  <p className="text-[13.5px] text-foreground/55">
+                    No measurable issues found on this pass.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky: the summary card is usually much shorter than the
+            findings list next to it — pinning it means that difference in
+            height never reads as unused space, it just stays in view. */}
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.015] p-6"
+          className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.015] p-6 lg:sticky lg:top-6"
         >
           <SpectralScore
             overall={result.critique.overallScore}
@@ -199,38 +243,6 @@ export function AnalysisResult({
           </div>
         </motion.div>
       </div>
-
-      {/* Full page width, not squeezed into the sidebar column — a narrow
-          380px list left most of the page unused once there were more than
-          a couple of findings. */}
-      <div className="mt-8">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">Findings</h2>
-          <span className="font-mono text-[11px] text-foreground/50">{result.findings.length}</span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {result.findings.map((f, i) => (
-              <FindingCard
-                key={f.id}
-                finding={f}
-                index={i}
-                active={activeId === f.id}
-                onHover={setActiveId}
-              />
-            ))}
-          </AnimatePresence>
-
-          {result.findings.length === 0 && (
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-6 text-center sm:col-span-2 xl:col-span-3">
-              <p className="text-[13.5px] text-foreground/55">
-                No measurable issues found on this pass.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
     </Shell>
   );
 }
@@ -255,46 +267,17 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Loading state that names the dimension currently being measured. A generic
- * spinner would waste the one moment the user is definitely paying attention
- * — this uses it to teach what the product actually does.
+ * Loading state. Plain and static, matching the other studio features —
+ * no animation, no rotating copy.
  */
 function MeasuringState({ stage }: { stage: Stage }) {
-  const reduce = useReducedMotion();
-  const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    if (reduce) return;
-    const t = setInterval(() => setStep((s) => (s + 1) % DIMENSION_ORDER.length), 900);
-    return () => clearInterval(t);
-  }, [reduce]);
-
   return (
-    <div className="grid min-h-[60svh] place-content-center">
-      <div className="flex flex-col items-center">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-foreground/50">
-          {stage === "queued" ? "Queued" : "Measuring"}
-        </p>
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={step}
-            initial={reduce ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: -6 }}
-            transition={{ duration: 0.35 }}
-            className="mt-2.5 text-lg tracking-tight"
-            style={{
-              color: SPECTRUM[DIMENSION_ORDER[step]].color,
-              fontVariationSettings: '"wght" 500',
-            }}
-          >
-            {SPECTRUM[DIMENSION_ORDER[step]].label}
-          </motion.p>
-        </AnimatePresence>
-        <p className="mt-1.5 max-w-xs text-center text-[12.5px] text-foreground/52">
-          {SPECTRUM[DIMENSION_ORDER[step]].blurb}
-        </p>
-      </div>
+    <div className="grid min-h-[60svh] place-content-center text-center">
+      <p className="text-[13.5px] text-foreground/58">
+        {stage === "queued"
+          ? "Queued — starting shortly."
+          : "Reading this design — this takes a few seconds."}
+      </p>
     </div>
   );
 }
