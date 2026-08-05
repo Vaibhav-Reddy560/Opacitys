@@ -335,12 +335,23 @@ export function connectedComponentBoxes(
 }
 
 // ---------------------------------------------------------------------------
-// k-means (k=2), matching `cv2.kmeans(..., k=2, KMEANS_PP_CENTERS)` closely
-// enough for a "text ink vs local background" 2-cluster split: deterministic
-// init from the extremes of the sample (not random — the caller needs
+// k-means, matching `cv2.kmeans(..., k=2, KMEANS_PP_CENTERS)` closely enough
+// for a "text ink vs local background" 2-cluster split: deterministic init
+// from the extremes of the sample (not random — the caller needs
 // reproducible contrast readings), a handful of Lloyd iterations, and
 // clusters returned ordered by descending membership like the Python code's
 // `order = argsort(-counts)`.
+//
+// For k>2 (only the restraint analyzer's palette count calls this), extra
+// centers are seeded by farthest-point (maximin): each one is the sample
+// furthest from every center chosen so far. An earlier version seeded extras
+// as copies of centers[0] — duplicate centers never separate under Lloyd's
+// algorithm (they move identically every iteration since they start with
+// identical assignments), so k=6 and k=8 both collapsed to 3 real clusters
+// on 6 perfectly-separated synthetic colors, verified with a standalone
+// harness. Maximin recovers all 6. k=2 is unaffected — the loop below is a
+// no-op when k=2, so this is a strict fix, not a behavior change, for the
+// only caller (color.ts) that has ever used this at k=2.
 // ---------------------------------------------------------------------------
 
 export function kmeans2(
@@ -366,7 +377,22 @@ export function kmeans2(
     [pixels[loIdx * 3], pixels[loIdx * 3 + 1], pixels[loIdx * 3 + 2]],
     [pixels[hiIdx * 3], pixels[hiIdx * 3 + 1], pixels[hiIdx * 3 + 2]],
   ];
-  for (let extra = 2; extra < k; extra++) centers.push(centers[0].slice());
+  while (centers.length < k) {
+    let bestIdx = 0;
+    let bestDist = -1;
+    for (let i = 0; i < n; i++) {
+      let nearest = Infinity;
+      for (const c of centers) {
+        const dr = pixels[i * 3] - c[0];
+        const dg = pixels[i * 3 + 1] - c[1];
+        const db = pixels[i * 3 + 2] - c[2];
+        const d = dr * dr + dg * dg + db * db;
+        if (d < nearest) nearest = d;
+      }
+      if (nearest > bestDist) { bestDist = nearest; bestIdx = i; }
+    }
+    centers.push([pixels[bestIdx * 3], pixels[bestIdx * 3 + 1], pixels[bestIdx * 3 + 2]]);
+  }
 
   const labels = new Int32Array(n);
   for (let iter = 0; iter < iterations; iter++) {

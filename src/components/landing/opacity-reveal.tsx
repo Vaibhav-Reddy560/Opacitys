@@ -196,14 +196,14 @@ export function OpacityReveal() {
                 Resolved
               </p>
               <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-white/50">
-                Ten ways to read one image
+                Nine ways to read one image
               </p>
             </div>
           </motion.div>
 
           {/* Layer 4 — the finish: a diagonal specular sweep, a hairline
-              inner chrome rim, and the ten spectral ticks arriving at
-              full strength — the same ten dimensions the marquee and the
+              inner chrome rim, and the nine spectral ticks arriving at
+              full strength — the same nine dimensions the marquee and the
               spectrum-split diagram use, so the poster ends on the exact
               vocabulary the rest of the page is built from. */}
           <motion.div aria-hidden style={{ opacity: finishOpacity }} className="absolute inset-0">

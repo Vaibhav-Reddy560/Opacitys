@@ -1,6 +1,6 @@
-import type { TrackAFinding } from "@/lib/critique/types";
 import { spectralResidualSaliency } from "../ops";
 import { newFindingId } from "../id";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
 
 /**
  * Hierarchy analyzer: does the most visually salient region correspond to
@@ -14,13 +14,13 @@ export function analyzeHierarchy(
   gray: ArrayLike<number>,
   width: number,
   height: number,
-): TrackAFinding[] {
-  if (height < 16 || width < 16) return [];
+): AnalyzerResult {
+  if (height < 16 || width < 16) return SKIPPED;
 
   const salMap = spectralResidualSaliency(gray, width, height);
   let total = 0;
   for (let i = 0; i < salMap.length; i++) total += salMap[i];
-  if (total <= 0) return [];
+  if (total <= 0) return SKIPPED;
 
   const topBandH = Math.floor(height * 0.4);
   let topMass = 0;
@@ -30,7 +30,7 @@ export function analyzeHierarchy(
   const topShare = topMass / total;
 
   const [lo, hi] = EXPECTED_TOP_BAND_SHARE;
-  if (topShare >= lo) return [];
+  if (topShare >= lo) return measured();
 
   // Locate the peak-saliency region (top 2% of values) to report as bbox.
   const sorted = Float32Array.from(salMap).sort();
@@ -48,9 +48,9 @@ export function analyzeHierarchy(
       }
     }
   }
-  if (!isFinite(minX)) return [];
+  if (!isFinite(minX)) return SKIPPED;
 
-  return [
+  return measured([
     {
       id: newFindingId(),
       dimension: "hierarchy",
@@ -58,5 +58,5 @@ export function analyzeHierarchy(
       bbox: [minX, minY, maxX - minX, maxY - minY],
       measured: { value: Math.round(topShare * 100) / 100, expected: [lo, hi], unit: " top-band saliency share" },
     },
-  ];
+  ]);
 }

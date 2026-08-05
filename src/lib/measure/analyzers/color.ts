@@ -2,6 +2,7 @@ import type { TrackAFinding } from "@/lib/critique/types";
 import { kmeans2, wcagContrast } from "../ops";
 import { newFindingId } from "../id";
 import type { TextLine } from "../text-lines";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
 
 /**
  * Color analyzer: dominant palette + WCAG contrast between text and its
@@ -15,7 +16,9 @@ export function analyzeColor(
   width: number,
   height: number,
   textLines: TextLine[],
-): TrackAFinding[] {
+): AnalyzerResult {
+  if (textLines.length === 0) return SKIPPED;
+
   const findings: TrackAFinding[] = [];
 
   for (const region of textLines) {
@@ -62,5 +65,5 @@ export function analyzeColor(
     }
   }
 
-  return findings;
+  return measured(findings);
 }

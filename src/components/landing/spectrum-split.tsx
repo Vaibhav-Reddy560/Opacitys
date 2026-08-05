@@ -12,10 +12,10 @@ import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
 
 /**
  * Signature interaction C — a beam of white light meets a prism and fans
- * into the ten critique dimensions as the section scrolls.
+ * into the nine critique dimensions as the section scrolls.
  *
  * GEOMETRY. The previous version fanned rays across too wide an angle for
- * its own viewBox: the outer two (hierarchy/violet, originality/red) exited
+ * its own viewBox: the outer two (hierarchy/violet, restraint/red) exited
  * the visible area entirely, which is why they read as "missing" — they
  * weren't undrawn, they were off-canvas. The fan here (±27° around the
  * horizontal, 9° per band) is sized against the viewBox up front so every

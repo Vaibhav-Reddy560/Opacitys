@@ -1,14 +1,18 @@
 import "server-only";
-import type { AnalyzerResponse, TrackAFinding } from "@/lib/critique/types";
+import type { AnalyzerResponse, Dimension, TrackAFinding } from "@/lib/critique/types";
 import { decodeForMeasurement } from "./image";
 import { detectTextLines } from "./text-lines";
 import { computeFacts, type MeasuredFacts } from "./facts";
 import { analyzeColor } from "./analyzers/color";
 import { analyzeTypography } from "./analyzers/typography";
+import { analyzeContrast } from "./analyzers/contrast";
+import { analyzeRhythm } from "./analyzers/rhythm";
 import { analyzeLayout } from "./analyzers/layout";
 import { analyzeSpacing } from "./analyzers/spacing";
 import { analyzeHierarchy } from "./analyzers/hierarchy";
 import { analyzeBalance } from "./analyzers/balance";
+import { analyzeRestraint } from "./analyzers/restraint";
+import type { AnalyzerResult } from "./analyzers/_result";
 
 export type { MeasuredFacts } from "./facts";
 
@@ -42,19 +46,27 @@ export async function measureImageFull(
 
   const textLines = safeRun("text-lines", () => detectTextLines(gray, width, height)) ?? [];
 
-  const runs: [string, () => TrackAFinding[]][] = [
+  const runs: [Dimension, () => AnalyzerResult][] = [
     ["color", () => analyzeColor(rgb, width, height, textLines)],
     ["typography", () => analyzeTypography(textLines)],
+    ["contrast", () => analyzeContrast(textLines)],
+    ["rhythm", () => analyzeRhythm(textLines)],
     ["layout", () => analyzeLayout(gray, width, height, textLines)],
     ["spacing", () => analyzeSpacing(gray, width, height, textLines)],
     ["hierarchy", () => analyzeHierarchy(gray, width, height)],
     ["balance", () => analyzeBalance(gray, width, height)],
+    ["restraint", () => analyzeRestraint(rgb, gray, width, height)],
   ];
 
   const findings: TrackAFinding[] = [];
-  for (const [label, run] of runs) {
-    const result = safeRun(label, run);
-    if (result) findings.push(...result);
+  const evaluated: Dimension[] = [];
+  for (const [dim, run] of runs) {
+    // A thrown analyzer counts as not-evaluated, same as a SKIPPED result —
+    // a crash measured nothing, so it shouldn't score a free 100 either.
+    const result = safeRun(dim, run);
+    if (!result?.evaluated) continue;
+    evaluated.push(dim);
+    findings.push(...result.findings);
   }
 
   const facts = safeRun("facts", () => computeFacts(rgb, gray, width, height, textLines)) ?? {
@@ -82,6 +94,7 @@ export async function measureImageFull(
       width: sourceWidth,
       height: sourceHeight,
       findings: projected,
+      evaluated,
     },
     facts,
   };

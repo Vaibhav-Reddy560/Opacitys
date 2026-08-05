@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
-import { DIMENSION_ORDER, SEVERITY, SPECTRUM } from "./spectrum";
+import { SEVERITY } from "./spectrum";
 import type { AnalyzerResponse, CritiqueResult, Dimension, Finding, Severity, TrackAFinding } from "./types";
 
 const notesSchema = z.object({
@@ -59,34 +59,50 @@ const PENALTY: Record<Severity, number> = {
   minor: Math.round(SEVERITY.minor.weight * 40),
 };
 
-function computeScores(findings: TrackAFinding[]): {
+function computeScores(
+  findings: TrackAFinding[],
+  evaluated: Dimension[],
+): {
   overallScore: number;
-  dimensionScores: Record<Dimension, number>;
+  dimensionScores: Partial<Record<Dimension, number>>;
 } {
-  const dimensionScores = {} as Record<Dimension, number>;
-  for (const dim of DIMENSION_ORDER) {
+  const dimensionScores: Partial<Record<Dimension, number>> = {};
+  for (const dim of evaluated) {
     const penalty = findings
       .filter((f) => f.dimension === dim)
       .reduce((sum, f) => sum + PENALTY[f.severity], 0);
     dimensionScores[dim] = Math.max(0, Math.round(100 - penalty));
   }
-  const overallScore = Math.round(
-    DIMENSION_ORDER.reduce((sum, d) => sum + dimensionScores[d], 0) / DIMENSION_ORDER.length,
-  );
+  // Average over what was actually measured, not over DIMENSION_ORDER.
+  // Averaging over every dimension regardless of whether it was evaluated
+  // gave every skipped one (and, before analyzers existed for them at all,
+  // every dimension with no analyzer) a free 100 — a design that measured
+  // color=0, spacing=76 and nothing else scored 88 overall instead of 38.
+  const scored = evaluated.map((d) => dimensionScores[d]!);
+  const overallScore =
+    scored.length > 0 ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : 100;
   return { overallScore, dimensionScores };
 }
 
 /** Plain-language fallback used when the model call fails or skips a
  * finding — degrades the prose, never drops the finding itself.
  *
- * Written per dimension rather than generically: each of the six
+ * Written per dimension rather than generically: each of the nine
  * deterministic analyzers (see src/lib/measure/analyzers) measures something
  * specific enough — a contrast ratio, how off-center the visual weight is,
  * how many type sizes are on the page — that a template can say what's
  * actually wrong in plain terms, not just restate the number. The number
- * still appears, but as evidence after the claim, not as the claim itself. */
-const FALLBACK_COPY: Partial<
-  Record<Dimension, (value: number, lo: number, hi: number) => { message: string; fix: string }>
+ * still appears, but as evidence after the claim, not as the claim itself.
+ *
+ * Total over `Dimension`, not partial: a missing entry here used to fall
+ * back to a generic "measured X, outside expected Y" template — exactly the
+ * robotic, number-first phrasing this file's SYSTEM_PROMPT forbids the
+ * model from writing. Making this exhaustive means the type system catches
+ * a missing dimension at compile time instead of silently degrading to bad
+ * copy at runtime the next time a dimension is added. */
+const FALLBACK_COPY: Record<
+  Dimension,
+  (value: number, lo: number, hi: number) => { message: string; fix: string }
 > = {
   color: (value, lo) => ({
     message: `The text or shapes here don't have enough contrast against their background to read comfortably — it measures ${value}:1, short of the ${lo}:1 minimum for easy reading.`,
@@ -114,32 +130,34 @@ const FALLBACK_COPY: Partial<
           message: `This design only uses ${value} text size, where at least ${lo} would let size itself tell the reader what's most important.`,
           fix: `Introduce at least ${lo} distinct sizes so headings, subheads and body text are visually distinct.`,
         },
+  contrast: (value, lo) => ({
+    message: `The headline here barely outsizes the body text, so nothing announces itself as the most important thing — it's only ${value}x the body size, where a decisive step is at least ${lo}x.`,
+    fix: `Push the headline to at least ${lo}x the body size, or shrink the body size, so the difference reads as deliberate rather than accidental.`,
+  }),
+  rhythm: (value, lo) => ({
+    message: `The lines here don't settle onto a shared vertical rhythm — only ${Math.round(value * 100)}% of the vertical gaps land on a common baseline, short of the ${Math.round(lo * 100)}% that reads as a grid.`,
+    fix: `Pick one base unit (say 8px) and make every vertical gap a whole multiple of it.`,
+  }),
   balance: (value, _lo, hi) => ({
     message: `The visual weight of this design leans to one side — its center of mass sits ${Math.round(value * 100)}% off the true center, more than the ${Math.round(hi * 100)}% that still reads as balanced.`,
     fix: `Add visual weight — a shape, image, or block of text — on the lighter side, or move a heavy element back toward the center.`,
+  }),
+  restraint: (value, _lo, hi) => ({
+    message: `This design is carrying ${value} competing colors — more than the ${hi} a viewer can hold at once, so nothing reads as the accent.`,
+    fix: `Cut back to a ground, one accent, and a neutral; the colors you remove will make the ones you keep louder.`,
   }),
 };
 
 function templatedNote(f: TrackAFinding): { message: string; fix: string } {
   const [lo, hi] = f.measured.expected;
-  const copy = FALLBACK_COPY[f.dimension];
-  if (copy) return copy(f.measured.value, lo, hi);
-  // Only reachable for dimensions with no deterministic analyzer (rhythm,
-  // contrast, depth, originality) — Track A never actually produces a
-  // finding for those, but this keeps the function total over `Dimension`.
-  const dim = SPECTRUM[f.dimension];
-  const direction = f.measured.value < lo ? "short of" : "past";
-  return {
-    message: `This spot affects ${dim.blurb.toLowerCase()} — it measures ${f.measured.value}${f.measured.unit}, ${direction} the ${lo}–${hi}${f.measured.unit} range that reads well.`,
-    fix: `Bring it back within ${lo}–${hi}${f.measured.unit}.`,
-  };
+  return FALLBACK_COPY[f.dimension](f.measured.value, lo, hi);
 }
 
 export async function groundCritique(
   imageUrl: string,
   trackA: AnalyzerResponse,
 ): Promise<CritiqueResult> {
-  const { overallScore, dimensionScores } = computeScores(trackA.findings);
+  const { overallScore, dimensionScores } = computeScores(trackA.findings, trackA.evaluated);
 
   if (trackA.findings.length === 0) {
     return {

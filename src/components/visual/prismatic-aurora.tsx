@@ -10,12 +10,19 @@
  * studio) were solid dark by design and were never meant to change.
  *
  * Recipe: the validated "Aurora" pattern (Aceternity UI /
- * superdesign.dev/styles/aurora) — four well-separated spectrum hues plus a
+ * superdesign.dev/styles/aurora) — four well-separated hues plus a
  * blurred, slowly rotating conic-gradient ring, which is what reads as
  * genuinely prismatic rather than four soft blobs. The conic gradient MUST
  * interpolate `in oklch` — the sRGB default channel-lerp between four
  * widely-spaced saturated hues produces a muddy grey/brown wash across each
  * transition arc (this was shipped once and immediately visible as a bug).
+ *
+ * The four hues live in their own `--aurora-a/b/c/d` vars (globals.css),
+ * deliberately decoupled from `--spectral-*` (the critique dimension
+ * palette) — this background is approved and load-bearing on the hero, CTA
+ * and auth shell, and has nothing to do with which dimensions the critique
+ * feature currently measures. It should never repaint just because a
+ * dimension is renamed or removed.
  *
  * Pure CSS keyframes — no canvas, no rAF loop, no pointer listeners.
  * Non-interactivity is structural, and prefers-reduced-motion is honoured
@@ -32,7 +39,7 @@ export function PrismaticAurora({
    * shorter section (e.g. the closing CTA), those same floors force the
    * blobs to occupy nearly the whole box, so they overlap heavily — and
    * since they paint in normal (non-blended) order, the later, warmer blobs
-   * (spacing, originality) sit on top at full opacity and bury the cooler
+   * (aurora-c, aurora-d) sit on top at full opacity and bury the cooler
    * ones underneath. The result reads as a duller, warm-skewed wash instead
    * of the same four-colour spread the hero shows. `compact` scales every
    * floor down (~58%) so the blobs stay spatially distinct in a shorter box
@@ -50,11 +57,11 @@ export function PrismaticAurora({
         }
         style={{
           background: `conic-gradient(in oklch, from 0deg,
-            var(--spectral-hierarchy),
-            var(--spectral-typography),
-            var(--spectral-spacing),
-            var(--spectral-originality),
-            var(--spectral-hierarchy))`,
+            var(--aurora-a),
+            var(--aurora-b),
+            var(--aurora-c),
+            var(--aurora-d),
+            var(--aurora-a))`,
           filter: compact ? "blur(52px) saturate(1.5)" : "blur(90px) saturate(1.5)",
           opacity: 0.55,
           animation: "aurora-ring-spin 16s linear infinite",
@@ -68,7 +75,7 @@ export function PrismaticAurora({
             : "absolute -left-[10%] top-[5%] size-[55%] min-h-[420px] min-w-[420px] rounded-full blur-[110px]"
         }
         style={{
-          background: "var(--spectral-hierarchy)",
+          background: "var(--aurora-a)",
           animation: "aurora-drift-a 8s ease-in-out infinite",
           willChange: "transform, opacity",
         }}
@@ -80,7 +87,7 @@ export function PrismaticAurora({
             : "absolute -right-[8%] top-[18%] size-[50%] min-h-[380px] min-w-[380px] rounded-full blur-[105px]"
         }
         style={{
-          background: "var(--spectral-typography)",
+          background: "var(--aurora-b)",
           animation: "aurora-drift-b 10s ease-in-out infinite",
           animationDelay: "-3.5s",
           willChange: "transform, opacity",
@@ -93,7 +100,7 @@ export function PrismaticAurora({
             : "absolute bottom-[12%] left-[16%] size-[52%] min-h-[400px] min-w-[400px] rounded-full blur-[115px]"
         }
         style={{
-          background: "var(--spectral-spacing)",
+          background: "var(--aurora-c)",
           animation: "aurora-drift-c 8.5s ease-in-out infinite",
           animationDelay: "-5.5s",
           willChange: "transform, opacity",
@@ -106,7 +113,7 @@ export function PrismaticAurora({
             : "absolute -bottom-[6%] right-[8%] size-[48%] min-h-[360px] min-w-[360px] rounded-full blur-[100px]"
         }
         style={{
-          background: "var(--spectral-originality)",
+          background: "var(--aurora-d)",
           animation: "aurora-drift-d 7s ease-in-out infinite",
           animationDelay: "-2s",
           willChange: "transform, opacity",

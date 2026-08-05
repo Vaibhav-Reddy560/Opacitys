@@ -1,5 +1,6 @@
 import { kmeans2, spectralResidualSaliency, wcagContrast, type Box } from "./ops";
 import { selectBoxes } from "./analyzers/_boxes";
+import { clusterTextLines } from "./analyzers/_type-clusters";
 import type { TextLine } from "./text-lines";
 
 /**
@@ -143,14 +144,7 @@ function topBandSaliencyShare(gray: ArrayLike<number>, width: number, height: nu
 
 function distinctTypeSizes(textLines: TextLine[]): number | null {
   if (textLines.length < 3) return null;
-  const heights = textLines.map((r) => r.bbox[3]).sort((a, b) => a - b);
-  const clusters: number[][] = [[heights[0]]];
-  for (let i = 1; i < heights.length; i++) {
-    const last = clusters[clusters.length - 1];
-    if (heights[i] - last[last.length - 1] <= 3) last.push(heights[i]);
-    else clusters.push([heights[i]]);
-  }
-  return clusters.length;
+  return clusterTextLines(textLines).length;
 }
 
 export function computeFacts(

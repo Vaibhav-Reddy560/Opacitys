@@ -2,41 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { z } from "zod";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { SpectralScore } from "./spectral-score";
 import { FindingCard } from "./finding-card";
 import { AnnotatedCanvas } from "./annotated-canvas";
-import { dimensionSchema, severitySchema } from "@/lib/critique/types";
+import { streamCompleteSchema, type StreamComplete } from "@/lib/critique/types";
 import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
 
-const streamFindingSchema = z.object({
-  id: z.string(),
-  dimension: dimensionSchema,
-  severity: severitySchema,
-  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
-  measured: z.object({
-    value: z.number(),
-    expected: z.tuple([z.number(), z.number()]),
-    unit: z.string(),
-  }),
-  message: z.string(),
-  fix: z.string(),
-  confidence: z.number(),
-});
-
-const streamCompleteSchema = z.object({
-  critique: z.object({
-    id: z.string(),
-    overallScore: z.number(),
-    dimensionScores: z.record(dimensionSchema, z.number()),
-    summary: z.string(),
-  }),
-  findings: z.array(streamFindingSchema),
-});
-
-type StreamComplete = z.infer<typeof streamCompleteSchema>;
 type Stage = "queued" | "running" | "complete" | "failed";
 
 export function AnalysisResult({
@@ -44,25 +17,34 @@ export function AnalysisResult({
   initialStatus,
   imageUrl,
   imageWidth,
+  // Set by the server component for an analysis that's already complete or
+  // failed by the time the page is requested — a bookmark, a second tab, a
+  // page reload. Lets that case render on the first paint with no SSE round
+  // trip at all; a still-running analysis gets neither and falls through to
+  // the SSE path below exactly as before.
+  initialResult = null,
+  initialError = null,
 }: {
   analysisId: string;
   initialStatus: string;
   imageUrl: string;
   imageWidth: number;
+  initialResult?: StreamComplete | null;
+  initialError?: string | null;
 }) {
   const reduce = useReducedMotion();
-  // Only short-circuit for "failed" — that needs no further data. Starting
-  // straight at "complete" looked like the same optimization, but the
-  // stream effect below skips connecting once stage is already terminal,
-  // so `result` was left null forever and the page never left the loading
-  // state. Starting at "queued" lets the effect run, which — for an
-  // already-complete analysis — resolves to "complete" with real data on
-  // its very first tick anyway (the stream route checks the DB status
-  // immediately), so this costs at most one fast round trip.
-  const [stage, setStage] = useState<Stage>(initialStatus === "failed" ? "failed" : "queued");
-  const [result, setResult] = useState<StreamComplete | null>(null);
+  // Seeding `stage` and `result` together is what makes this correct — an
+  // earlier version seeded only `stage` to "complete" for an
+  // already-complete analysis, but the stream effect below skips connecting
+  // once stage is terminal, so `result` was left null forever and the page
+  // never left the loading state. Now "complete" is only ever reached
+  // alongside real data, which makes that bug structurally impossible.
+  const [stage, setStage] = useState<Stage>(
+    initialResult ? "complete" : initialStatus === "failed" ? "failed" : "queued",
+  );
+  const [result, setResult] = useState<StreamComplete | null>(initialResult);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [failureReason, setFailureReason] = useState<string | null>(null);
+  const [failureReason, setFailureReason] = useState<string | null>(initialError);
 
   useEffect(() => {
     if (stage === "complete" || stage === "failed") return;

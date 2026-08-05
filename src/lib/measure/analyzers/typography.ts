@@ -1,6 +1,7 @@
-import type { TrackAFinding } from "@/lib/critique/types";
 import { newFindingId } from "../id";
 import type { TextLine } from "../text-lines";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
+import { clusterTextLines } from "./_type-clusters";
 
 /**
  * Typography analyzer: clusters text-line heights into distinct type
@@ -9,33 +10,14 @@ import type { TextLine } from "../text-lines";
  * sizes. Port of `services/analyzer/analyzers/typography.py`.
  */
 const EXPECTED_DISTINCT_SIZES: [number, number] = [2.0, 5.0];
-const CLUSTER_TOLERANCE_PX = 3;
 
-function clusterHeights(heights: number[]): number[] {
-  if (heights.length === 0) return [];
-  const sorted = [...heights].sort((a, b) => a - b);
-  const clusters: number[][] = [[sorted[0]]];
-  for (let i = 1; i < sorted.length; i++) {
-    const h = sorted[i];
-    const last = clusters[clusters.length - 1];
-    if (h - last[last.length - 1] <= CLUSTER_TOLERANCE_PX) {
-      last.push(h);
-    } else {
-      clusters.push([h]);
-    }
-  }
-  return clusters.map((c) => c.reduce((a, b) => a + b, 0) / c.length);
-}
+export function analyzeTypography(textLines: TextLine[]): AnalyzerResult {
+  if (textLines.length < 3) return SKIPPED;
 
-export function analyzeTypography(textLines: TextLine[]): TrackAFinding[] {
-  if (textLines.length < 3) return [];
-
-  const heights = textLines.map((r) => r.bbox[3]);
-  const clusters = clusterHeights(heights);
-  const nSizes = clusters.length;
+  const nSizes = clusterTextLines(textLines).length;
 
   const [lo, hi] = EXPECTED_DISTINCT_SIZES;
-  if (nSizes >= lo && nSizes <= hi) return [];
+  if (nSizes >= lo && nSizes <= hi) return measured();
 
   const xs = textLines.map((r) => r.bbox[0]);
   const ys = textLines.map((r) => r.bbox[1]);
@@ -50,7 +32,7 @@ export function analyzeTypography(textLines: TextLine[]): TrackAFinding[] {
     Math.max(...y2s) - minY,
   ];
 
-  return [
+  return measured([
     {
       id: newFindingId(),
       dimension: "typography",
@@ -58,5 +40,5 @@ export function analyzeTypography(textLines: TextLine[]): TrackAFinding[] {
       bbox: unionBbox,
       measured: { value: nSizes, expected: EXPECTED_DISTINCT_SIZES, unit: " distinct sizes" },
     },
-  ];
+  ]);
 }

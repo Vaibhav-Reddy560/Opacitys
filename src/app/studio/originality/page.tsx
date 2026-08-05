@@ -13,7 +13,7 @@ import { SPECTRUM } from "@/lib/critique/spectrum";
 import { fetchJson } from "@/lib/http";
 
 const MODULE = MODULES.find((m) => m.slug === "originality")!;
-const ACCENT = SPECTRUM.originality.color;
+const ACCENT = SPECTRUM.restraint.color;
 
 const BASIS_NOTE =
   "Read against widely-documented movements, studios and campaigns the model knows — not a live index of everything that exists. Treat it as a starting orientation, not a verdict.";

@@ -37,6 +37,15 @@ export const analysisStatusEnum = pgEnum("analysis_status", [
   "complete",
   "failed",
 ]);
+// Mirrors the live Postgres type, which is APPEND-ONLY: Postgres has no
+// `DROP VALUE`, so retired dimensions stay in the type forever as orphans
+// (see drizzle/0005_dimension_restraint.sql). "originality" and "depth" are
+// historical — no analyzer produces them any more. The app-level source of
+// truth for what a *current* critique dimension is, is `dimensionSchema` in
+// src/lib/critique/types.ts (9 values, no "originality"/"depth"). These two
+// lists are deliberately different sizes; do not "reconcile" them by
+// deleting values here — that requires a create-new-type/drop-old migration
+// this codebase has chosen not to do (see the migration file for why).
 export const dimensionEnum = pgEnum("dimension", [
   "hierarchy",
   "color",
@@ -48,6 +57,7 @@ export const dimensionEnum = pgEnum("dimension", [
   "rhythm",
   "contrast",
   "depth",
+  "restraint",
 ]);
 
 // ---------------------------------------------------------------------------

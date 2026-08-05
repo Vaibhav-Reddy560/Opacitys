@@ -1,8 +1,8 @@
-import type { TrackAFinding } from "@/lib/critique/types";
 import type { Box } from "../ops";
 import { newFindingId } from "../id";
 import type { TextLine } from "../text-lines";
 import { selectBoxes } from "./_boxes";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
 
 /**
  * Spacing analyzer: gap consistency between adjacent content blocks. Real
@@ -29,9 +29,9 @@ export function analyzeSpacing(
   width: number,
   height: number,
   textLines: TextLine[],
-): TrackAFinding[] {
+): AnalyzerResult {
   const boxes = selectBoxes(gray, width, height, textLines);
-  if (boxes.length < 4) return [];
+  if (boxes.length < 4) return SKIPPED;
 
   const gaps: number[] = [];
   for (let i = 0; i < boxes.length; i++) {
@@ -39,7 +39,7 @@ export function analyzeSpacing(
     const g = nearestGap(boxes[i], others);
     if (g !== null) gaps.push(g);
   }
-  if (gaps.length < 3) return [];
+  if (gaps.length < 3) return SKIPPED;
 
   const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
   const variance = gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length;
@@ -47,7 +47,7 @@ export function analyzeSpacing(
   const cv = mean > 0 ? std / mean : 0;
 
   const [lo, hi] = EXPECTED_CV;
-  if (cv <= hi) return [];
+  if (cv <= hi) return measured();
 
   const xs = boxes.map((b) => b.x);
   const ys = boxes.map((b) => b.y);
@@ -62,7 +62,7 @@ export function analyzeSpacing(
     Math.max(...y2s) - minY,
   ];
 
-  return [
+  return measured([
     {
       id: newFindingId(),
       dimension: "spacing",
@@ -70,5 +70,5 @@ export function analyzeSpacing(
       bbox: unionBbox,
       measured: { value: Math.round(cv * 100) / 100, expected: [lo, hi], unit: " gap variation (CV)" },
     },
-  ];
+  ]);
 }

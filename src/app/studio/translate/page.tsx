@@ -13,7 +13,7 @@ import type { ClientInterpretation } from "@/lib/ai/client-interpretation";
 import { fetchJson, readJsonSafe } from "@/lib/http";
 
 const MODULE = MODULES.find((m) => m.slug === "translate")!;
-const ACCENT = SPECTRUM.originality.color;
+const ACCENT = SPECTRUM.balance.color;
 
 const CHANNELS = ["Email", "Slack", "WhatsApp / SMS", "Call notes", "In person", "Other"];
 

@@ -59,8 +59,7 @@
   --color-spectral-contrast: var(--spectral-contrast);
   --color-spectral-spacing: var(--spectral-spacing);
   --color-spectral-balance: var(--spectral-balance);
-  --color-spectral-depth: var(--spectral-depth);
-  --color-spectral-originality: var(--spectral-originality);
+  --color-spectral-restraint: var(--spectral-restraint);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -106,7 +105,11 @@
 
   /* Spectrum: violet -> red, in strictly descending hue. Must stay in sync
      with the SPECTRUM record in src/lib/critique/spectrum.ts — note there is
-     no magenta band; `rhythm` sits at 235 (azure), not 330. */
+     no magenta band; `rhythm` sits at 235 (azure), not 330. Nine bands: the
+     critique dimension set dropped "originality" (the standalone Originality
+     studio feature already covers that) and "depth" was replaced by
+     "restraint", which keeps depth's old slot but originality's old color —
+     no analyzer-facing value moved. */
   --spectral-hierarchy: oklch(0.62 0.22 295);
   --spectral-color: oklch(0.62 0.2 265);
   --spectral-rhythm: oklch(0.69 0.18 235);
@@ -115,8 +118,19 @@
   --spectral-contrast: oklch(0.75 0.18 130);
   --spectral-spacing: oklch(0.85 0.16 95);
   --spectral-balance: oklch(0.75 0.17 55);
-  --spectral-depth: oklch(0.72 0.19 40);
-  --spectral-originality: oklch(0.66 0.22 15);
+  --spectral-restraint: oklch(0.66 0.22 15);
+
+  /* The approved hero/CTA/auth background's four hues, pinned independently
+     of the spectral palette above. PrismaticAurora picks these for spread
+     (~90° apart), not because they're dimensions — coupling it to
+     --spectral-* meant any future palette change (e.g. removing a
+     dimension) would silently repaint an already-approved background.
+     Values are frozen copies of hierarchy/typography/spacing/originality
+     at the time this was decoupled; they no longer track the palette. */
+  --aurora-a: oklch(0.62 0.22 295);
+  --aurora-b: oklch(0.75 0.15 205);
+  --aurora-c: oklch(0.85 0.16 95);
+  --aurora-d: oklch(0.66 0.22 15);
 
   /* Severity — reads against the spectral palette without competing */
   --severity-critical: oklch(0.66 0.22 15);

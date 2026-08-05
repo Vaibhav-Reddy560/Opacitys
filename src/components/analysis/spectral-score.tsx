@@ -57,13 +57,18 @@ export function SpectralScore({
           const pct = typeof score === "number" ? Math.max(0, Math.min(100, score)) / 100 : 0;
           const filledEnd = start + (end - start) * pct;
 
+          const wasEvaluated = typeof score === "number";
+
           return (
             <g key={dim}>
-              {/* Track */}
+              {/* Track — dimmer for a dimension nothing measured (too few
+                  text lines, degenerate image, etc.) than for one that was
+                  evaluated and simply scored 0, so "not measured" doesn't
+                  read as identical to "failed". */}
               <path
                 d={arcPath(start, end, radius)}
                 fill="none"
-                stroke="oklch(1 0 0 / 0.07)"
+                stroke={wasEvaluated ? "oklch(1 0 0 / 0.07)" : "oklch(1 0 0 / 0.03)"}
                 strokeWidth={stroke}
                 strokeLinecap="round"
               />

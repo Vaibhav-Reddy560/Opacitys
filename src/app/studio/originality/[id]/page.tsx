@@ -7,7 +7,7 @@ import { PrismPanel, OpacityMeter } from "@/components/brand/prism";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import type { CrowdingResult } from "@/lib/originality/read";
 
-const ACCENT = SPECTRUM.originality.color;
+const ACCENT = SPECTRUM.restraint.color;
 
 const BASIS_NOTE =
   "Read against widely-documented movements, studios and campaigns the model knows — not a live index of everything that exists. Treat it as a starting orientation, not a verdict.";

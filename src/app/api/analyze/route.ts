@@ -6,7 +6,16 @@ import { readSession } from "@/lib/auth/session";
 import { runCritiquePipeline } from "@/lib/critique/pipeline";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// after() (below) is bounded by this route's own maxDuration — confirmed in
+// node_modules/next/dist/docs/.../after.md: "after will run for the
+// platform's default or configured max duration of your route." 120s was
+// tighter than the stream route's own former 180s wait ceiling, so at p95
+// the pipeline was killed mid-Groq-call before its catch could persist a
+// failure, leaving the row stuck at "running" forever. Raised to match the
+// stream route's ceiling (see maxDuration there) — kept in sync
+// deliberately; the stream route's stale-run reaper is the backstop if a
+// pipeline still exceeds this.
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   assetId: z.string().uuid(),

@@ -1,5 +1,5 @@
-import type { TrackAFinding } from "@/lib/critique/types";
 import { newFindingId } from "../id";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
 
 /**
  * Balance analyzer: visual weight centroid versus the geometric canvas
@@ -16,7 +16,7 @@ export function analyzeBalance(
   gray: ArrayLike<number>,
   width: number,
   height: number,
-): TrackAFinding[] {
+): AnalyzerResult {
   const sorted = Float32Array.from(gray).sort();
   const background = sorted[Math.floor(sorted.length / 2)];
 
@@ -31,7 +31,7 @@ export function analyzeBalance(
       sumY += y * w;
     }
   }
-  if (total <= 0) return [];
+  if (total <= 0) return SKIPPED;
 
   const cx = sumX / total;
   const cy = sumY / total;
@@ -42,7 +42,7 @@ export function analyzeBalance(
   const offsetFrac = halfDiag > 0 ? offset / halfDiag : 0;
 
   const [lo, hi] = EXPECTED_OFFSET_FRAC;
-  if (offsetFrac <= hi) return [];
+  if (offsetFrac <= hi) return measured();
 
   const boxSize = Math.min(width, height) * 0.15;
   const bbox: [number, number, number, number] = [
@@ -52,7 +52,7 @@ export function analyzeBalance(
     boxSize,
   ];
 
-  return [
+  return measured([
     {
       id: newFindingId(),
       dimension: "balance",
@@ -60,5 +60,5 @@ export function analyzeBalance(
       bbox,
       measured: { value: Math.round(offsetFrac * 100) / 100, expected: [lo, hi], unit: " centroid offset" },
     },
-  ];
+  ]);
 }

@@ -194,7 +194,11 @@ export const MODULES = [
     tagline: "The whole client relationship, in one thread",
     body:
       "Log what the client said, when, and through which channel. Track how many rounds a project has been through, how long each turnaround took, and what you charged for it — with every message readable back into what they probably mean and a reply you could send.",
-    dimension: "depth",
+    // "depth" was retired from the critique dimension set; this module's
+    // accent now shares "balance" rather than a dimension no analyzer
+    // measures any more. ("tools" also uses "balance", but that module is
+    // still status: "planned" and unbuilt, so there's no live collision.)
+    dimension: "balance",
     // Wired end to end. Needs GROQ_API_KEY for interpretation and
     // DATABASE_URL to persist the log — no Python service.
     status: "live",
@@ -213,7 +217,10 @@ export const MODULES = [
     tagline: "Check it is yours before you spend a week on it",
     body:
       "Describe the direction — or attach a sketch — and get a read on how crowded that territory already is: the movements and work it sits closest to, what's genuinely distinct about it, and moves that would put more daylight between you and the nearest neighbor.",
-    dimension: "originality",
+    // "originality" was retired from the critique dimension set (this
+    // module is the standalone feature it duplicated); "restraint"
+    // inherits the exact same color, so this accent doesn't change.
+    dimension: "restraint",
     // Wired end to end. Needs GROQ_API_KEY for the read and DATABASE_URL to
     // persist it. Reads against what the model knows from published,
     // documented work — not a live index of everything that exists.

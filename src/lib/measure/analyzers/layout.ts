@@ -1,7 +1,7 @@
-import type { TrackAFinding } from "@/lib/critique/types";
 import { newFindingId } from "../id";
 import type { TextLine } from "../text-lines";
 import { selectBoxes } from "./_boxes";
+import { SKIPPED, measured, type AnalyzerResult } from "./_result";
 
 /**
  * Layout analyzer: how many detected content blocks actually share an edge
@@ -21,9 +21,9 @@ export function analyzeLayout(
   width: number,
   height: number,
   textLines: TextLine[],
-): TrackAFinding[] {
+): AnalyzerResult {
   const boxes = selectBoxes(gray, width, height, textLines);
-  if (boxes.length < 3) return [];
+  if (boxes.length < 3) return SKIPPED;
 
   const tolX = TOLERANCE_FRAC * width;
   const tolY = TOLERANCE_FRAC * height;
@@ -49,7 +49,7 @@ export function analyzeLayout(
 
   const ratio = alignedCount / boxes.length;
   const [lo, hi] = EXPECTED_ALIGNMENT_RATIO;
-  if (ratio >= lo) return [];
+  if (ratio >= lo) return measured();
 
   const xs = boxes.map((b) => b.x);
   const ys = boxes.map((b) => b.y);
@@ -64,7 +64,7 @@ export function analyzeLayout(
     Math.max(...y2s) - minY,
   ];
 
-  return [
+  return measured([
     {
       id: newFindingId(),
       dimension: "layout",
@@ -72,5 +72,5 @@ export function analyzeLayout(
       bbox: unionBbox,
       measured: { value: Math.round(ratio * 100) / 100, expected: [lo, hi], unit: " alignment ratio" },
     },
-  ];
+  ]);
 }

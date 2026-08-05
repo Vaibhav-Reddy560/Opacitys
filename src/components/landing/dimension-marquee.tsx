@@ -3,7 +3,7 @@
 import { Marquee } from "@/components/motion/marquee";
 import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
 
-// Repeated 3x within a single Marquee "copy" — one lap of the ten
+// Repeated 3x within a single Marquee "copy" — one lap of the nine
 // dimensions alone is narrower than most viewports, so the un-duplicated
 // version visibly ran out of content and left the right side of the belt
 // looking empty before the loop caught up. Marquee already duplicates its

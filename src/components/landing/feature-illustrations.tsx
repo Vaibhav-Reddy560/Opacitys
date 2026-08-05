@@ -76,7 +76,7 @@ function Frame({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
 }
 
 const DIAGRAMS: Record<ModuleDef["slug"], (p: { accent: string }) => ReactNode> = {
-  // Image frame, three pinned findings, one measured chip, ten score bars.
+  // Image frame, three pinned findings, one measured chip, nine score bars.
   critique: ({ accent }) => (
     <>
       <Frame x={24} y={28} w={148} h={124} />
