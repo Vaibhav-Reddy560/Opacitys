@@ -44,20 +44,22 @@ export function AnalysisResult({
   initialStatus,
   imageUrl,
   imageWidth,
-  imageHeight,
 }: {
   analysisId: string;
   initialStatus: string;
   imageUrl: string;
   imageWidth: number;
-  imageHeight: number;
 }) {
   const reduce = useReducedMotion();
-  const [stage, setStage] = useState<Stage>(
-    initialStatus === "complete" || initialStatus === "failed"
-      ? (initialStatus as Stage)
-      : "queued",
-  );
+  // Only short-circuit for "failed" — that needs no further data. Starting
+  // straight at "complete" looked like the same optimization, but the
+  // stream effect below skips connecting once stage is already terminal,
+  // so `result` was left null forever and the page never left the loading
+  // state. Starting at "queued" lets the effect run, which — for an
+  // already-complete analysis — resolves to "complete" with real data on
+  // its very first tick anyway (the stream route checks the DB status
+  // immediately), so this costs at most one fast round trip.
+  const [stage, setStage] = useState<Stage>(initialStatus === "failed" ? "failed" : "queued");
   const [result, setResult] = useState<StreamComplete | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [failureReason, setFailureReason] = useState<string | null>(null);
@@ -101,11 +103,12 @@ export function AnalysisResult({
 
   const canvasFindings = useMemo(
     () =>
-      (result?.findings ?? []).map((f) => ({
+      (result?.findings ?? []).map((f, i) => ({
         id: f.id,
         dimension: f.dimension,
         severity: f.severity,
         bbox: f.bbox,
+        number: i + 1,
       })),
     [result],
   );
@@ -143,7 +146,10 @@ export function AnalysisResult({
 
   return (
     <Shell>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      {/* items-start: without it, this grid row stretches to match the
+          taller sidebar and the canvas — sized to the image, not the row —
+          just sits in a tall box with dead space below it. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -152,83 +158,77 @@ export function AnalysisResult({
           <AnnotatedCanvas
             imageUrl={imageUrl}
             imageWidth={imageWidth}
-            imageHeight={imageHeight}
             findings={canvasFindings}
             activeId={activeId}
             onSelect={setActiveId}
           />
         </motion.div>
 
-        <div className="space-y-6">
-          <motion.div
-            initial={reduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.015] p-6"
-          >
-            <SpectralScore
-              overall={result.critique.overallScore}
-              dimensionScores={result.critique.dimensionScores}
-              size={230}
-            />
-            <p className="text-pretty mt-5 text-center text-[13.5px] leading-relaxed text-foreground/58">
-              {result.critique.summary}
-            </p>
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.015] p-6"
+        >
+          <SpectralScore
+            overall={result.critique.overallScore}
+            dimensionScores={result.critique.dimensionScores}
+            size={220}
+          />
+          <p className="text-pretty mt-5 text-center text-[13.5px] leading-relaxed text-foreground/58">
+            {result.critique.summary}
+          </p>
 
-            <div className="mt-6 w-full space-y-2 border-t border-white/[0.07] pt-5">
-              {DIMENSION_ORDER.map((dim) => {
-                const score = result.critique.dimensionScores[dim];
-                if (typeof score !== "number") return null;
-                return (
-                  <div key={dim} className="flex items-center gap-2.5">
-                    <span
-                      className="size-1.5 shrink-0 rounded-full"
-                      style={{ background: SPECTRUM[dim].color }}
-                    />
-                    <span className="text-[11.5px] text-foreground/52">
-                      {SPECTRUM[dim].label}
-                    </span>
-                    <span className="ml-auto font-mono text-[11.5px] tabular-nums text-foreground/72">
-                      {Math.round(score)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-
-          <div>
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">
-                Findings
-              </h2>
-              <span className="font-mono text-[11px] text-foreground/50">
-                {result.findings.length}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {result.findings.map((f, i) => (
-                  <FindingCard
-                    key={f.id}
-                    finding={f}
-                    index={i}
-                    active={activeId === f.id}
-                    onHover={setActiveId}
+          <div className="mt-6 w-full space-y-2 border-t border-white/[0.07] pt-5">
+            {DIMENSION_ORDER.map((dim) => {
+              const score = result.critique.dimensionScores[dim];
+              if (typeof score !== "number") return null;
+              return (
+                <div key={dim} className="flex items-center gap-2.5">
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ background: SPECTRUM[dim].color }}
                   />
-                ))}
-              </AnimatePresence>
-
-              {result.findings.length === 0 && (
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-6 text-center">
-                  <p className="text-[13.5px] text-foreground/55">
-                    No measurable issues found on this pass.
-                  </p>
+                  <span className="text-[11.5px] text-foreground/52">{SPECTRUM[dim].label}</span>
+                  <span className="ml-auto font-mono text-[11.5px] tabular-nums text-foreground/72">
+                    {Math.round(score)}
+                  </span>
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
+        </motion.div>
+      </div>
+
+      {/* Full page width, not squeezed into the sidebar column — a narrow
+          380px list left most of the page unused once there were more than
+          a couple of findings. */}
+      <div className="mt-8">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">Findings</h2>
+          <span className="font-mono text-[11px] text-foreground/50">{result.findings.length}</span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <AnimatePresence mode="popLayout">
+            {result.findings.map((f, i) => (
+              <FindingCard
+                key={f.id}
+                finding={f}
+                index={i}
+                active={activeId === f.id}
+                onHover={setActiveId}
+              />
+            ))}
+          </AnimatePresence>
+
+          {result.findings.length === 0 && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-6 text-center sm:col-span-2 xl:col-span-3">
+              <p className="text-[13.5px] text-foreground/55">
+                No measurable issues found on this pass.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Shell>
@@ -272,28 +272,7 @@ function MeasuringState({ stage }: { stage: Stage }) {
   return (
     <div className="grid min-h-[60svh] place-content-center">
       <div className="flex flex-col items-center">
-        {/* Spectral sweep ring */}
-        <div className="relative size-24">
-          {DIMENSION_ORDER.map((dim, i) => (
-            <motion.span
-              key={dim}
-              className="absolute inset-0 rounded-full border"
-              style={{
-                borderColor: SPECTRUM[dim].color,
-                opacity: i === step ? 0.85 : 0.12,
-                scale: 1 - i * 0.085,
-              }}
-              animate={reduce ? undefined : { rotate: 360 }}
-              transition={{
-                duration: 7 + i * 1.4,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            />
-          ))}
-        </div>
-
-        <p className="mt-8 text-[11px] uppercase tracking-[0.22em] text-foreground/50">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-foreground/50">
           {stage === "queued" ? "Queued" : "Measuring"}
         </p>
         <AnimatePresence mode="wait">

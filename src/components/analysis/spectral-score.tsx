@@ -23,15 +23,20 @@ export function SpectralScore({
 }) {
   const reduce = useReducedMotion();
   const stroke = 7;
-  const gap = 3.2; // degrees of gap between segments
+  const gap = 1.8; // degrees of gap between segments — was 3.2, read as a hard notch
   const radius = size / 2 - stroke * 2;
   const cx = size / 2;
   const cy = size / 2;
 
   const segAngle = 360 / DIMENSION_ORDER.length;
+  // The ring wraps from the last segment back to the first, leaving one
+  // visible seam — rotating the whole ring so that seam lands at the
+  // bottom (behind the "Composite" label) instead of the top, which is
+  // where a viewer's eye lands first and read as a stray dark line.
+  const ROTATE = 180;
 
   const polar = (angleDeg: number, r: number) => {
-    const a = ((angleDeg - 90) * Math.PI) / 180;
+    const a = ((angleDeg + ROTATE - 90) * Math.PI) / 180;
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   };
 
@@ -77,7 +82,7 @@ export function SpectralScore({
                     delay: 0.12 + i * 0.07,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  style={{ filter: `drop-shadow(0 0 6px ${SPECTRUM[dim].color})` }}
+                  style={{ filter: `drop-shadow(0 0 2px ${SPECTRUM[dim].color})` }}
                 />
               )}
             </g>

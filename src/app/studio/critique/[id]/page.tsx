@@ -12,7 +12,6 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       status: schema.analyses.status,
       imageUrl: schema.assets.storageKey,
       width: schema.assets.width,
-      height: schema.assets.height,
     })
     .from(schema.analyses)
     .innerJoin(schema.assets, eq(schema.assets.id, schema.analyses.assetId))
@@ -28,7 +27,6 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
         initialStatus={row.status}
         imageUrl={row.imageUrl}
         imageWidth={row.width ?? 0}
-        imageHeight={row.height ?? 0}
       />
     </div>
   );

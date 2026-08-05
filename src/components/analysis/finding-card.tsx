@@ -66,6 +66,15 @@ export function FindingCard({
       />
 
       <div className="flex items-center gap-2.5 pl-2">
+        {/* Matches the numbered marker on the image above, so a finding
+            here can be traced back to the exact spot it's about. */}
+        <span
+          aria-hidden
+          className="grid size-[18px] shrink-0 place-items-center rounded-full font-mono text-[10px] font-medium"
+          style={{ background: spectral?.color, color: "oklch(0.145 0.012 265)" }}
+        >
+          {index + 1}
+        </span>
         <span
           className="text-[10px] uppercase tracking-[0.16em]"
           style={{ color: spectral?.color }}
@@ -82,8 +91,11 @@ export function FindingCard({
         >
           {severity?.label}
         </span>
-        <span className="ml-auto font-mono text-[10px] text-foreground/50">
-          {Math.round(finding.confidence * 100)}%
+        <span
+          className="ml-auto font-mono text-[10px] text-foreground/50"
+          title="How confident this reading is"
+        >
+          {Math.round(finding.confidence * 100)}% confident
         </span>
       </div>
 
@@ -92,18 +104,21 @@ export function FindingCard({
       </p>
 
       {/* The measurement — the reason this finding is trustworthy */}
-      <div className="mt-3 ml-2 flex items-baseline gap-2 rounded-lg border border-white/[0.06] bg-black/25 px-2.5 py-1.5 font-mono text-[11px]">
-        <span className="text-foreground/50">measured</span>
-        <span style={{ color: spectral?.color }}>
-          {measured.value}
-          {measured.unit}
-        </span>
-        <span className="text-foreground/50">/</span>
-        <span className="text-foreground/50">expected</span>
-        <span className="text-foreground/62">
-          {measured.expected[0]}–{measured.expected[1]}
-          {measured.unit}
-        </span>
+      <div className="mt-3 ml-2 rounded-lg border border-white/[0.06] bg-black/25 px-2.5 py-1.5">
+        <p className="text-[9.5px] uppercase tracking-[0.1em] text-foreground/40">
+          The evidence
+        </p>
+        <div className="mt-1 flex items-baseline gap-2 font-mono text-[11px]">
+          <span style={{ color: spectral?.color }}>
+            {measured.value}
+            {measured.unit}
+          </span>
+          <span className="text-foreground/50">measured here, versus a safe</span>
+          <span className="text-foreground/62">
+            {measured.expected[0]}–{measured.expected[1]}
+            {measured.unit}
+          </span>
+        </div>
       </div>
 
       <p className="mt-3 pl-2 text-[13px] leading-relaxed text-foreground/52">

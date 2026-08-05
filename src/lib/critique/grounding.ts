@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
-import { DIMENSION_ORDER, SEVERITY } from "./spectrum";
+import { DIMENSION_ORDER, SEVERITY, SPECTRUM } from "./spectrum";
 import type { AnalyzerResponse, CritiqueResult, Dimension, Finding, Severity, TrackAFinding } from "./types";
 
 const notesSchema = z.object({
@@ -20,19 +20,31 @@ const SYSTEM_PROMPT = `You are a design critique engine. You are given an image 
 list of MEASURED findings produced by deterministic analyzers (color contrast,
 alignment, spacing, saliency, etc.) — not your own perception. Scores and
 severities are already computed; your only job is to explain each finding in
-plain language a designer understands.
+plain language a designer — even a beginner, not a specialist — understands.
 
 Hard rules:
 1. Write a "message" and a "fix" for every finding id given to you — never
    skip one, and never invent a new id, bbox, or measurement of your own.
-2. Every "message" must reference the specific measured value and its
-   expected range in plain language.
+2. Start every "message" with what is actually wrong in plain English —
+   what the eye would notice, or what problem it causes for a reader or
+   user — BEFORE citing any number. Never open a message by just restating
+   the measured value and its range (e.g. never write something structurally
+   like "Measured 3.42:1, outside the expected 4.5–21:1 range" as the whole
+   message) — that tells the reader nothing about what it looks or feels
+   like. The number comes second, as evidence for the plain-language claim,
+   not as the claim itself.
+   Bad: "Measured 3.42:1 in this area, outside the expected 4.5–21:1 range."
+   Good: "This label is too faint to read comfortably against its
+   background — it measures 3.42:1 contrast, short of the 4.5:1 minimum for
+   body text."
 3. Every "fix" must be concrete and actionable (e.g. "increase contrast to
    at least 4.5:1 by darkening the text to #1a1a1a", not "improve contrast").
 4. Assign each finding a principleSlug only if you can name a real, citable
    design principle as a lowercase-kebab slug (e.g. "wcag-contrast-aa",
    "modular-scale", "gestalt-proximity"); otherwise null.
-5. Write a 2-3 sentence overall summary a designer would read first.
+5. Write a 2-3 sentence overall summary a designer would read first, in the
+   same plain-language-first style — lead with the overall read, not a
+   recap of the score.
 
 Return ONLY valid JSON:
 { "summary": string, "notes": [{ "id": string, "message": string, "fix": string, "principleSlug": string | null }] }`;
@@ -65,12 +77,17 @@ function computeScores(findings: TrackAFinding[]): {
 }
 
 /** Plain-language fallback used when the model call fails or skips a
- * finding — degrades the prose, never drops the finding itself. */
+ * finding — degrades the prose, never drops the finding itself. Leads with
+ * what the finding is actually about (the dimension's blurb) rather than
+ * opening with the raw number, same rule the model prompt follows, so a
+ * degraded response doesn't read as more robotic than a normal one. */
 function templatedNote(f: TrackAFinding): { message: string; fix: string } {
   const [lo, hi] = f.measured.expected;
+  const dim = SPECTRUM[f.dimension];
+  const direction = f.measured.value < lo ? "short of" : "past";
   return {
-    message: `Measured ${f.measured.value}${f.measured.unit} in this area, outside the expected ${lo}–${hi}${f.measured.unit} range.`,
-    fix: `Bring this back toward ${lo}–${hi}${f.measured.unit}.`,
+    message: `This spot affects ${dim.blurb.toLowerCase()} — it measures ${f.measured.value}${f.measured.unit}, ${direction} the ${lo}–${hi}${f.measured.unit} range that reads well.`,
+    fix: `Bring it back within ${lo}–${hi}${f.measured.unit}.`,
   };
 }
 
