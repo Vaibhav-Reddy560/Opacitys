@@ -19,13 +19,15 @@ export function AuthShell({
 }) {
   return (
     <main className="relative isolate grid min-h-svh place-items-center overflow-hidden px-6 py-12">
-      <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" />
+      <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
       <div
         aria-hidden
         className="absolute inset-0 -z-10"
         style={{
-          background:
-            "radial-gradient(85% 60% at 50% 45%, oklch(0.145 0.012 265 / 0.55) 0%, oklch(0.145 0.012 265 / 0.8) 60%)",
+          background: [
+            "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
+            "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
+          ].join(", "),
         }}
       />
 

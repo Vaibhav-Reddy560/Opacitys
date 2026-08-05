@@ -31,7 +31,7 @@ export default function Home() {
           className="relative isolate flex flex-col items-center justify-center overflow-hidden px-6"
           style={{ minHeight: "min(100svh, 840px)" }}
         >
-          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" />
+          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
           <div
             aria-hidden
             className="absolute inset-0 -z-10"
