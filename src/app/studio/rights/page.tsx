@@ -2,6 +2,7 @@ import { Scale } from "lucide-react";
 import { PageHeader } from "@/components/studio/page-header";
 import { PrismPanel } from "@/components/brand/prism";
 import { RightsQaPanel } from "@/components/studio/rights-qa-panel";
+import { RecentStrip } from "@/components/library/recent-strip";
 import { MODULES } from "@/lib/copy";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 
@@ -55,6 +56,7 @@ export default function RightsPage() {
           </PrismPanel>
 
           <RightsQaPanel />
+          <RecentStrip kind="rights" accent={SPECTRUM.balance.color} />
         </div>
       </div>
     </div>

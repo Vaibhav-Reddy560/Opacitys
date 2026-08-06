@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import { readSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -15,14 +15,8 @@ const patchSchema = z.object({
 // PATCH /api/client-messages/[id] -> mark an entry responded-to (computing
 // turnaround from the original timestamp) and/or update price/iteration.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await readSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in to update this entry." }, { status: 401 });
-  }
-
-  if (session.kind === "guest") {
-    return NextResponse.json({ error: "Guest sessions have nothing to update." }, { status: 403 });
-  }
+  const { session, error } = await requireUser();
+  if (error) return error;
 
   const { id } = await params;
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));

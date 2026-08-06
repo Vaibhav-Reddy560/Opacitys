@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { readSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { runCritiquePipeline } from "@/lib/critique/pipeline";
 
 export const runtime = "nodejs";
@@ -35,16 +35,8 @@ const bodySchema = z.object({
 // `after()` needs nothing extra running and works the same in dev and on
 // Vercel.
 export async function POST(req: Request) {
-  const session = await readSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in to run a critique." }, { status: 401 });
-  }
-  if (session.kind === "guest") {
-    return NextResponse.json(
-      { error: "Guest sessions aren't saved — create an account to run this." },
-      { status: 403 },
-    );
-  }
+  const { session, error } = await requireUser();
+  if (error) return error;
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -71,7 +63,7 @@ export async function POST(req: Request) {
 
   after(async () => {
     try {
-      await runCritiquePipeline({ analysisId: analysis.id, imageUrl: asset.storageKey });
+      await runCritiquePipeline({ analysisId: analysis.id, assetId: asset.id, imageUrl: asset.storageKey });
     } catch (err) {
       // runCritiquePipeline already persists status:"failed" + the real
       // error message before rethrowing — this catch only stops the

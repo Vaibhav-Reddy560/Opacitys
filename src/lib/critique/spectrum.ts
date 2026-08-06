@@ -110,6 +110,49 @@ export const SEVERITY: Record<Severity, { label: string; color: string; weight: 
   minor: { label: "Minor", color: "oklch(0.7 0.03 260)", weight: 0.25 },
 };
 
+/**
+ * Accent for the library ("Your work") — not a MODULES entry, so it has no
+ * `dimension` of its own. Deliberately NOT one of the nine SPECTRUM colors:
+ * all nine are already claimed by a module, so reusing any would collide
+ * with that module's own sidebar icon. Pulled toward yellow/gold on request,
+ * but shifted off spacing's hue 95 (Route) — same brightness family, clearly
+ * a different band.
+ */
+export const META_ACCENT = "oklch(0.85 0.15 75)";
+
+/**
+ * Correspondence's own accent. `translate`'s `dimension` in copy.ts is
+ * still literally `"balance"` — a leftover from when "depth" was retired
+ * from the critique dimension set and correspondence's accent fell back to
+ * balance rather than a dimension no analyzer measures any more (see the
+ * comment on that MODULES entry). That fallback was written as
+ * collision-free only because Instruments (tools, the *other* module on
+ * `balance`) was still `status: "planned"` and never rendered a live icon —
+ * once Instruments shipped, the two sidebar icons became identical. Rather
+ * than reassign `dimension` (there is no tenth free slot among the nine
+ * SPECTRUM keys — reassigning to any of them just relocates the same
+ * collision onto whichever module already owns it), Correspondence gets its
+ * own accent here and every site that computes a module's color goes
+ * through `moduleAccent()` below instead of reading `dimension` directly.
+ * Muted and warm deliberately, not another saturated spectral band — it
+ * reads as "off to the side of the prism," matching how little
+ * correspondence has to do with critique scoring in the first place.
+ */
+export const CORRESPONDENCE_ACCENT = "oklch(0.8 0.05 40)";
+
+/**
+ * The one place that decides a module's sidebar/header accent. Every
+ * generic `SPECTRUM[m.dimension]` lookup across the app should call this
+ * instead of reading `dimension` directly — it's what keeps the
+ * Correspondence special-case (see CORRESPONDENCE_ACCENT above) from having
+ * to be duplicated at every call site, and centralizes the one exception so
+ * a future module reassignment only has to be taught here.
+ */
+export function moduleAccent(m: { slug: string; dimension: string }): string {
+  if (m.slug === "translate") return CORRESPONDENCE_ACCENT;
+  return SPECTRUM[m.dimension as Dimension]?.color ?? SPECTRUM.balance.color;
+}
+
 /** Full spectrum as a CSS gradient — used for rims, rules, and the wordmark. */
 export const SPECTRUM_GRADIENT = DIMENSION_ORDER.map((d) => SPECTRUM[d].color).join(", ");
 

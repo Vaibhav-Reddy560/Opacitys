@@ -9,8 +9,7 @@ import { ChromeButton } from "@/components/ui/chrome-button";
 import { PrismPanel } from "@/components/brand/prism";
 import { FeatureIllustration } from "@/components/landing/feature-illustrations";
 import { MODULES, STATUS_LABEL, type ModuleDef } from "@/lib/copy";
-import { SPECTRUM } from "@/lib/critique/spectrum";
-import type { Dimension } from "@/lib/critique/types";
+import { moduleAccent } from "@/lib/critique/spectrum";
 
 /**
  * Replaces the old nine-card grid — one paragraph each, deep-linking straight
@@ -33,7 +32,7 @@ export function FeatureExplorer() {
 
   const activeIndex = MODULES.findIndex((m) => m.slug === active);
   const activeModule = MODULES[activeIndex];
-  const accent = SPECTRUM[activeModule.dimension as Dimension]?.color;
+  const accent = moduleAccent(activeModule);
 
   function move(refs: RefObject<(HTMLButtonElement | null)[]>, e: KeyboardEvent) {
     let next = activeIndex;
@@ -70,7 +69,7 @@ export function FeatureExplorer() {
         >
           {MODULES.map((m, i) => {
             const isActive = m.slug === active;
-            const a = SPECTRUM[m.dimension as Dimension]?.color;
+            const a = moduleAccent(m);
             return (
               <button
                 key={m.slug}
@@ -109,7 +108,7 @@ export function FeatureExplorer() {
       >
         {MODULES.map((m, i) => {
           const isActive = m.slug === active;
-          const a = SPECTRUM[m.dimension as Dimension]?.color;
+          const a = moduleAccent(m);
           return (
             <button
               key={m.slug}

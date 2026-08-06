@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "@/lib/db";
 import { eq, inArray } from "drizzle-orm";
-import { measureImage } from "@/lib/measure";
+import { measureImageFull } from "@/lib/measure";
 import { MODELS } from "@/lib/ai/models";
 import { groundCritique } from "./grounding";
 
@@ -16,9 +16,10 @@ const PIPELINE_VERSION = "v2-ts";
  */
 export async function runCritiquePipeline(params: {
   analysisId: string;
+  assetId: string;
   imageUrl: string;
 }): Promise<{ critiqueId: string }> {
-  const { analysisId, imageUrl } = params;
+  const { analysisId, assetId, imageUrl } = params;
 
   await db
     .update(schema.analyses)
@@ -32,12 +33,19 @@ export async function runCritiquePipeline(params: {
     }
     const imageBytes = Buffer.from(await imageRes.arrayBuffer());
 
-    const trackA = await measureImage(imageBytes);
+    // measureImageFull, not measureImage: `facts` were already being
+    // computed and thrown away by the findings-only wrapper. They're the
+    // palette/type/spacing evidence Fingerprint aggregates
+    // (src/lib/profile/fingerprint.ts), so they're persisted on the asset —
+    // same compute, one more write.
+    const { response: trackA, facts } = await measureImageFull(imageBytes);
 
     await db
       .update(schema.analyses)
       .set({ raw: trackA, pipelineVersion: PIPELINE_VERSION })
       .where(eq(schema.analyses.id, analysisId));
+
+    await db.update(schema.assets).set({ facts }).where(eq(schema.assets.id, assetId));
 
     const result = await groundCritique(imageUrl, trackA);
 

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { requireUser } from "@/lib/auth/session";
 
 // SSE runs fine on the default Node runtime (Fluid Compute) — no need for
 // `runtime = "edge"`. Explicitly Node so we keep full DB client support.
@@ -29,7 +30,25 @@ const STALE_MS = 3.5 * 60 * 1000;
 // that works for v1. Swap for @inngest/realtime if polling latency (up to
 // POLL_MS) becomes a real UX problem.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { session, error: authError } = await requireUser();
+  if (authError) return authError;
+
   const { id: analysisId } = await params;
+
+  // Ownership check once, up front — this is what closed the gap where any
+  // signed-in caller who had (or guessed) an analysisId could stream another
+  // user's critique status. The POST that creates this row already checks
+  // asset.userId; this route previously didn't, since /api routes sit
+  // outside the proxy's matcher and had no guard of their own.
+  const [owned] = await db
+    .select({ userId: schema.assets.userId })
+    .from(schema.analyses)
+    .innerJoin(schema.assets, eq(schema.assets.id, schema.analyses.assetId))
+    .where(eq(schema.analyses.id, analysisId))
+    .limit(1);
+  if (!owned || owned.userId !== session.userId) {
+    return new Response("Not found", { status: 404 });
+  }
 
   let pendingTick: ReturnType<typeof setTimeout> | null = null;
   // Set once the client disconnects (tab closed, navigated away) or the

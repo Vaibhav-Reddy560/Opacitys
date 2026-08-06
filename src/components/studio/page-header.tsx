@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { PrismIcon, PrismRule } from "@/components/brand/prism";
 import { STATUS_LABEL, type ModuleDef } from "@/lib/copy";
-import { SPECTRUM } from "@/lib/critique/spectrum";
-import type { Dimension } from "@/lib/critique/types";
+import { moduleAccent } from "@/lib/critique/spectrum";
 
 /**
  * Standard module page header. Carries the module's spectral accent and, when
@@ -18,7 +17,7 @@ export function PageHeader({
   icon: ReactNode;
   children?: ReactNode;
 }) {
-  const accent = SPECTRUM[m.dimension as Dimension]?.color;
+  const accent = moduleAccent(m);
 
   return (
     <header className="mb-10">

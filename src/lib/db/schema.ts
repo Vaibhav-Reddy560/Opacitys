@@ -16,6 +16,7 @@ import {
   timestamp,
   integer,
   real,
+  boolean,
   jsonb,
   vector,
   index,
@@ -67,21 +68,48 @@ export const dimensionEnum = pgEnum("dimension", [
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
-  // Nullable: guest sessions (see src/lib/auth) create a user row with no
-  // password at all, and the pre-existing demo-user row predates this
-  // column. NULL means "cannot sign in with a password," not "unset."
-  passwordHash: text("password_hash"),
+  // Nullable: only set once a user has actually signed in via Firebase.
+  // Existing rows from the pre-Firebase (email+password) system are matched
+  // and adopted by email on their first Google sign-in — see
+  // src/app/api/auth/google/route.ts — so this starts NULL for them too.
+  firebaseUid: text("firebase_uid").unique(),
+  name: text("name"),
+  image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// The Fingerprint module's stored half. Everything measured (style
+// signature, craft scores, palette) is DERIVED on read from assets/analyses
+// — see src/lib/profile/fingerprint.ts — and deliberately not cached here:
+// it's cheap at this data volume and a stale copy of a number the user can
+// also see computed elsewhere is worse than no copy.
+//
+// What lives here is only what CANNOT be derived: what the designer told us
+// about themselves, and the one expensive thing (the written read) that
+// would otherwise re-bill a model call on every page view.
 export const designerProfiles = pgTable("designer_profiles", {
   userId: uuid("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
+  // Self-reported, never inferred — a critique score says nothing about
+  // which apps someone owns. The UI labels these as self-reported.
   skillLevel: text("skill_level"),
   tools: text("tools").array(),
+  // [{ label, url }] — Behance's public API is closed and Dribbble v2 no
+  // longer returns view/like counts, so a plain link is the honest ceiling
+  // for most platforms. Dribbble alone can also be connected properly, via
+  // portfolioConnections below.
+  portfolioLinks: jsonb("portfolio_links"),
+  // The cached written read of the fingerprint. `narrativeBasis` is a hash
+  // of the aggregate it was generated from: when the live aggregate hashes
+  // differently, the UI knows the prose is stale and offers a refresh,
+  // rather than silently re-billing a model call on every visit.
+  narrative: text("narrative"),
+  narrativeBasis: text("narrative_basis"),
+  narrativeAt: timestamp("narrative_at"),
   styleVector: vector("style_vector", { dimensions: 768 }),
   tastePrefs: jsonb("taste_prefs"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const projects = pgTable("projects", {
@@ -110,33 +138,68 @@ export const assets = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     storageKey: text("storage_key").notNull(),
+    // The filename the browser reported at upload time — purely for display
+    // in the library grid (src/lib/library). Never used for storage paths or
+    // any lookup, so it's safe to be whatever the user's OS called the file.
+    originalName: text("original_name"),
     mime: text("mime").notNull(),
     width: integer("width"),
     height: integer("height"),
+    // MeasuredFacts (src/lib/measure/facts.ts) — palette, contrast, type
+    // sizes, alignment, spacing. Lives on the ASSET, not on an analysis:
+    // these describe the image itself, identically no matter which module
+    // measured it, and `analyses` has no user_id (ownership there is a
+    // 3-hop join), which would make every Fingerprint palette query a join.
+    // Written opportunistically by critique/identify/originality, all of
+    // which already compute it, and backfilled by
+    // scripts/backfill-asset-facts.ts for rows that predate this column.
+    facts: jsonb("facts"),
     phash: text("phash"),
     embedding: vector("embedding", { dimensions: 768 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("assets_phash_idx").on(t.phash)],
+  (t) => [
+    index("assets_phash_idx").on(t.phash),
+    // Powers the library's "your uploads, newest first" listing — the only
+    // per-user lookup on this table before now was the upload insert itself.
+    index("assets_user_created_idx").on(t.userId, t.createdAt),
+  ],
 );
 
-export const analyses = pgTable("analyses", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  assetId: uuid("asset_id")
-    .notNull()
-    .references(() => assets.id, { onDelete: "cascade" }),
-  // Which module this measurement pass belongs to — critique, identify, or
-  // (image-attached) originality — all three share the same Track A
-  // measurement layer and analyses/assets tables.
-  kind: text("kind").notNull().default("critique"),
-  status: analysisStatusEnum("status").notNull().default("queued"),
-  pipelineVersion: text("pipeline_version").notNull(),
-  raw: jsonb("raw"), // full Track A analyzer output
-  // Real failure reason for a `failed` status — surfaced to the user
-  // instead of a generic "something went wrong".
-  error: text("error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const analyses = pgTable(
+  "analyses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assetId: uuid("asset_id")
+      .notNull()
+      .references(() => assets.id, { onDelete: "cascade" }),
+    // Which module this measurement pass belongs to — critique, identify, or
+    // (image-attached) originality — all three share the same Track A
+    // measurement layer and analyses/assets tables.
+    kind: text("kind").notNull().default("critique"),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    pipelineVersion: text("pipeline_version").notNull(),
+    raw: jsonb("raw"), // full Track A analyzer output
+    // Real in-flight progress label for the SSE routes to surface, e.g.
+    // Rebuild's "tracing" | "separating" | "naming". Text, not an enum — a
+    // stage list is far more likely to change than a status list, same
+    // reasoning as tool_answers.stage below. Critique/Identify don't write
+    // this yet; their stream route still infers progress from
+    // pipelineVersion, but the column is here for them to adopt later.
+    stage: text("stage"),
+    // Real failure reason for a `failed` status — surfaced to the user
+    // instead of a generic "something went wrong".
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // No user_id on this table — ownership is only reachable via
+    // asset_id -> assets.user_id (see src/lib/library/queries.ts). This
+    // index is what keeps that join a single index scan instead of a
+    // sequential scan per asset.
+    index("analyses_asset_created_idx").on(t.assetId, t.createdAt),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // Critique (Phase 1 — the v1 moat)
@@ -154,33 +217,44 @@ export const designPrinciples = pgTable("design_principles", {
   embedding: vector("embedding", { dimensions: 768 }),
 });
 
-export const critiques = pgTable("critiques", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  analysisId: uuid("analysis_id")
-    .notNull()
-    .references(() => analyses.id, { onDelete: "cascade" }),
-  overallScore: real("overall_score").notNull(),
-  dimensionScores: jsonb("dimension_scores").notNull(),
-  summary: text("summary").notNull(),
-  model: text("model").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const critiques = pgTable(
+  "critiques",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => analyses.id, { onDelete: "cascade" }),
+    overallScore: real("overall_score").notNull(),
+    dimensionScores: jsonb("dimension_scores").notNull(),
+    summary: text("summary").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  // Postgres does NOT auto-index foreign keys. Fingerprint's craft rollup
+  // (src/lib/profile/fingerprint.ts) walks every critique a user owns via
+  // this column, which seq-scanned before this index existed.
+  (t) => [index("critiques_analysis_idx").on(t.analysisId)],
+);
 
-export const critiqueFindings = pgTable("critique_findings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  critiqueId: uuid("critique_id")
-    .notNull()
-    .references(() => critiques.id, { onDelete: "cascade" }),
-  dimension: dimensionEnum("dimension").notNull(),
-  severity: severityEnum("severity").notNull(),
-  // [x, y, w, h] in source-image pixel space — always from Track A, never the VLM
-  bbox: jsonb("bbox").notNull(),
-  principleId: uuid("principle_id").references(() => designPrinciples.id),
-  measured: jsonb("measured").notNull(), // { value, expected: [min,max], unit }
-  message: text("message").notNull(),
-  fix: text("fix").notNull(),
-  confidence: real("confidence").notNull(),
-});
+export const critiqueFindings = pgTable(
+  "critique_findings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    critiqueId: uuid("critique_id")
+      .notNull()
+      .references(() => critiques.id, { onDelete: "cascade" }),
+    dimension: dimensionEnum("dimension").notNull(),
+    severity: severityEnum("severity").notNull(),
+    // [x, y, w, h] in source-image pixel space — always from Track A, never the VLM
+    bbox: jsonb("bbox").notNull(),
+    principleId: uuid("principle_id").references(() => designPrinciples.id),
+    measured: jsonb("measured").notNull(), // { value, expected: [min,max], unit }
+    message: text("message").notNull(),
+    fix: text("fix").notNull(),
+    confidence: real("confidence").notNull(),
+  },
+  (t) => [index("critique_findings_critique_idx").on(t.critiqueId)],
+);
 
 // ---------------------------------------------------------------------------
 // Style taxonomy — Identify
@@ -197,19 +271,29 @@ export const styleTaxonomy = pgTable("style_taxonomy", {
   embedding: vector("embedding", { dimensions: 768 }),
 });
 
-export const styleScores = pgTable("style_scores", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  analysisId: uuid("analysis_id")
-    .notNull()
-    .references(() => analyses.id, { onDelete: "cascade" }),
-  taxonomyId: uuid("taxonomy_id")
-    .notNull()
-    .references(() => styleTaxonomy.id),
-  weight: real("weight").notNull(), // e.g. 0.4 for "40% Swiss Typography"
-  // Which measured facts / visual cues the read pointed to for this style —
-  // shown to the user so "show the evidence" is actually true.
-  evidence: jsonb("evidence"),
-});
+export const styleScores = pgTable(
+  "style_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => analyses.id, { onDelete: "cascade" }),
+    taxonomyId: uuid("taxonomy_id")
+      .notNull()
+      .references(() => styleTaxonomy.id),
+    weight: real("weight").notNull(), // 0-1 (the model's 0-100 is divided at write time)
+    // Which measured facts / visual cues the read pointed to for this style —
+    // shown to the user so "show the evidence" is actually true.
+    evidence: jsonb("evidence"),
+  },
+  // Both sides of Fingerprint's style-signature rollup: it groups every
+  // score a user owns (analysisId) by style (taxonomyId). Neither was
+  // indexed — see the note on critiques above.
+  (t) => [
+    index("style_scores_analysis_idx").on(t.analysisId),
+    index("style_scores_taxonomy_idx").on(t.taxonomyId),
+  ],
+);
 
 // One read (summary + which model produced it) per analysis — the weighted
 // breakdown itself lives in style_scores, one row per style in the blend.
@@ -226,19 +310,35 @@ export const styleReads = pgTable("style_reads", {
 // Decomposition & editor (Phase 4/5)
 // ---------------------------------------------------------------------------
 
-export const layers = pgTable("layers", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  analysisId: uuid("analysis_id")
-    .notNull()
-    .references(() => analyses.id, { onDelete: "cascade" }),
-  parentId: uuid("parent_id"),
-  zIndex: integer("z_index").notNull(),
-  kind: text("kind").notNull(), // shape | text | image | gradient | effect
-  geometry: jsonb("geometry").notNull(),
-  style: jsonb("style"),
-  maskKey: text("mask_key"),
-  confidence: real("confidence").notNull(),
-});
+export const layers = pgTable(
+  "layers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => analyses.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id"),
+    zIndex: integer("z_index").notNull(),
+    kind: text("kind").notNull(), // shape | text | image | gradient | effect
+    geometry: jsonb("geometry").notNull(),
+    style: jsonb("style"),
+    maskKey: text("mask_key"),
+    confidence: real("confidence").notNull(),
+    // The naming pass's output (Rebuild) plus inspector edit state — both
+    // added on top of the Phase-0 shape, not part of the original design.
+    // name/note default to the deterministic primitive-fitter label until a
+    // model call (or the user) overwrites them; hidden lets the inspector
+    // toggle visibility without deleting the row.
+    name: text("name"),
+    note: text("note"),
+    hidden: boolean("hidden").notNull().default(false),
+  },
+  (t) => [
+    // Every read is "all layers for this analysis, in build order" — the
+    // table has had an FK since migration 0001 but no index at all.
+    index("layers_analysis_zindex_idx").on(t.analysisId, t.zIndex),
+  ],
+);
 
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -272,6 +372,51 @@ export const documentOps = pgTable(
 // Trends & originality (Phase 7)
 // ---------------------------------------------------------------------------
 
+// One Currents read: a designer asked for a scope, we searched the live web
+// for it and wrote up what's moving.
+//
+// This is deliberately NOT the same thing as `trends`/`trend_sources` below,
+// and the two should not be "reconciled". Those model a *global, clustered*
+// registry — one row per named current across all users, with an embedding,
+// a momentum score and a first-seen date, built by the ingestion +
+// clustering pipeline described in the Currents blueprint. This is a
+// per-user, per-query read with no ingestion behind it. Same subject,
+// different shape and different lifecycle.
+export const trendReads = pgTable(
+  "trend_reads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(), // what the designer typed, verbatim
+    kind: text("kind"), // category | platform | brand | null (auto)
+    windowMonths: integer("window_months").notNull(),
+    // normalizeScope(scope)|kind|windowMonths — see src/lib/trends/read.ts.
+    // Indexed with createdAt so the freshness lookup is one index scan.
+    cacheKey: text("cache_key").notNull(),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    // "searching" | "writing". A plain text column rather than a new enum
+    // deliberately: Postgres enums are append-only and a stage list is far
+    // more likely to change than a status list.
+    stage: text("stage"),
+    digest: text("digest"), // pass-1 research prose, citation markers stripped
+    result: jsonb("result"), // structured TrendRead
+    // [{ title, url }] the model actually searched up or opened — the
+    // whitelist every citation in `result` is validated against.
+    sources: jsonb("sources"),
+    model: text("model"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("trend_reads_cache_idx").on(t.cacheKey, t.createdAt),
+    // Powers the library's "your Currents reads" listing — the cache index
+    // above is keyed by scope, not by who asked for it.
+    index("trend_reads_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
 export const trends = pgTable("trends", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -294,25 +439,48 @@ export const trendSources = pgTable("trend_sources", {
   content: text("content"),
 });
 
-export const originalityChecks = pgTable("originality_checks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  // Nullable: a check can be text-only (a described direction with no
-  // sketch attached) — assetId is only set when an image was uploaded.
-  assetId: uuid("asset_id").references(() => assets.id, { onDelete: "cascade" }),
-  inputText: text("input_text").notNull(),
-  // Neighbours the model named, each { name, kind, era, whyClose, closeness }.
-  nearest: jsonb("nearest"),
-  // 0-100 "how crowded is this direction" read.
-  saturationScore: real("saturation_score"),
-  // Full structured result (distinctives, moves, confidence, basis) beyond
-  // what nearest/saturationScore capture individually.
-  result: jsonb("result"),
-  model: text("model"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const originalityChecks = pgTable(
+  "originality_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Nullable: a check can be text-only (a described direction with no
+    // sketch attached) — assetId is only set when an image was uploaded.
+    assetId: uuid("asset_id").references(() => assets.id, { onDelete: "cascade" }),
+    inputText: text("input_text").notNull(),
+    // Neighbours the model named, each { name, kind, era, whyClose, closeness }.
+    nearest: jsonb("nearest"),
+    // 0-100 "how crowded is this direction" read.
+    saturationScore: real("saturation_score"),
+    // Full structured result (distinctives, moves, confidence, basis) beyond
+    // what nearest/saturationScore capture individually.
+    result: jsonb("result"),
+    model: text("model"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("originality_checks_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+// One Clearance answer: a designer asked about an asset/jurisdiction and got
+// general + country-flavored guidance. Q&A, not a durable knowledge base —
+// mirrors the shape of originalityChecks above.
+export const rightsAnswers = pgTable(
+  "rights_answers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    country: text("country").notNull(),
+    result: jsonb("result").notNull(), // { answer, keyConsiderations, confidence }
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("rights_answers_user_created_idx").on(t.userId, t.createdAt)],
+);
 
 // ---------------------------------------------------------------------------
 // Tool knowledge, client translation, portfolio (Phase 3/8/9)
@@ -329,6 +497,44 @@ export const toolKnowledge = pgTable("tool_knowledge", {
   verifiedAt: timestamp("verified_at"),
   confidence: real("confidence"),
 });
+
+// One Instruments answer: a designer asked where a control is or how a tool
+// works, and it was either read off an attached screenshot or researched
+// live. Deliberately NOT toolKnowledge above — that models a durable,
+// vendor-changelog-ingested knowledge base (unbuilt); this is a per-query
+// answer, same split as trendReads/trends and originalityChecks/(none).
+export const toolAnswers = pgTable(
+  "tool_answers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    tool: text("tool"), // optional tool name the designer named
+    version: text("version"), // optional version the designer named
+    // Set only when a screenshot was attached — that path is answered
+    // synchronously and never cached (see src/lib/tools/answer.ts), so this
+    // is null for every research-path row.
+    assetId: uuid("asset_id").references(() => assets.id, { onDelete: "set null" }),
+    // normalizeQuestion(question)|tool|version — null for screenshot
+    // answers, which must never serve or be served by the cache: they're
+    // specific to that exact image.
+    cacheKey: text("cache_key"),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    stage: text("stage"), // "searching" | "writing" — null on the screenshot path
+    digest: text("digest"), // research-path pass-1 prose; null on the screenshot path
+    result: jsonb("result"), // structured ToolAnswer
+    sources: jsonb("sources"), // [{ title, url }] — the citation whitelist; empty on the screenshot path
+    model: text("model"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("tool_answers_cache_idx").on(t.cacheKey, t.createdAt),
+    index("tool_answers_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
 
 export const clientMessages = pgTable(
   "client_messages",
@@ -368,16 +574,37 @@ export const clientTranslations = pgTable(
   },
 );
 
+// Only `dribbble` is actually connectable. Behance's public developer API
+// was closed by Adobe — there is no OAuth flow left to build against it, so
+// a Behance presence can only ever be a link in
+// designerProfiles.portfolioLinks. `provider` stays a plain text column
+// rather than an enum so that stays true without a migration if either
+// platform's access changes again.
 export const portfolioConnections = pgTable("portfolio_connections", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  provider: text("provider").notNull(), // behance | dribbble
+  provider: text("provider").notNull(), // dribbble (behance: API closed, link-only)
+  // AES-256-GCM, keyed by PORTFOLIO_TOKEN_KEY — see src/lib/crypto.ts. The
+  // column was always named `_enc`; this honors it rather than storing the
+  // bearer token in plaintext.
   oauthTokenEnc: text("oauth_token_enc").notNull(),
+  externalHandle: text("external_handle"),
+  // [{ id, title, url, imageUrl, publishedAt }] — refetched wholesale on
+  // sync, so a jsonb snapshot beats a child table with rows to reconcile.
+  shots: jsonb("shots"),
   lastSync: timestamp("last_sync"),
 });
 
+// DELIBERATELY UNUSED, and not to be "wired up" — this models a per-shot
+// views/likes timeseries, and no platform will supply one any more:
+// Behance's API is closed entirely, and Dribbble's v2 API dropped the
+// `views_count`/`likes_count` fields its v1 had. Populating it would mean
+// inventing the numbers. Kept only so the shape is on record if a platform
+// ever reopens that data. Same deliberate split as trendReads/trends and
+// toolAnswers/toolKnowledge: the aspirational table stays, the shipped
+// feature writes elsewhere.
 export const portfolioMetrics = pgTable("portfolio_metrics", {
   id: uuid("id").primaryKey().defaultRandom(),
   connectionId: uuid("connection_id")

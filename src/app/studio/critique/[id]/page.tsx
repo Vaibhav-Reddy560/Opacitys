@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { readSession } from "@/lib/auth/session";
 import { AnalysisResult } from "@/components/analysis/analysis-result";
 import { streamCompleteSchema, type StreamComplete } from "@/lib/critique/types";
 
@@ -19,6 +20,7 @@ import { streamCompleteSchema, type StreamComplete } from "@/lib/critique/types"
  */
 export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await readSession();
 
   const [row] = await db
     .select({
@@ -27,13 +29,17 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       error: schema.analyses.error,
       imageUrl: schema.assets.storageKey,
       width: schema.assets.width,
+      userId: schema.assets.userId,
     })
     .from(schema.analyses)
     .innerJoin(schema.assets, eq(schema.assets.id, schema.analyses.assetId))
     .where(eq(schema.analyses.id, id))
     .limit(1);
 
-  if (!row) notFound();
+  // A critique is a private result — unlike Currents, this row has no
+  // deliberate cross-user cache to keep open. A mismatch reads as "not
+  // found" rather than 403 so guessing a uuid can't even confirm one exists.
+  if (!row || row.userId !== session?.userId) notFound();
 
   let initialResult: StreamComplete | null = null;
   if (row.status === "complete") {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { readSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { measureImageFull } from "@/lib/measure";
 import { readStyle } from "@/lib/identify/read";
 import { findTaxonomyEntry } from "@/lib/identify/taxonomy";
@@ -20,16 +20,8 @@ const bodySchema = z.object({
 // One vision call (~5s) so this runs inline rather than through the
 // queued/streamed flow Critique uses for its heavier two-track pipeline.
 export async function POST(req: Request) {
-  const session = await readSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in to use Identify." }, { status: 401 });
-  }
-  if (session.kind === "guest") {
-    return NextResponse.json(
-      { error: "Guest sessions aren't saved — create an account to run this." },
-      { status: 403 },
-    );
-  }
+  const { session, error } = await requireUser();
+  if (error) return error;
   if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
       { error: "GROQ_API_KEY is not set — add it to .env.local to use Identify." },
@@ -68,6 +60,11 @@ export async function POST(req: Request) {
       .update(schema.analyses)
       .set({ raw: { ...trackA, facts }, pipelineVersion: "v1" })
       .where(eq(schema.analyses.id, analysis.id));
+
+    // Also on the asset — raw.facts stays for this module's own result page,
+    // but Fingerprint reads assets.facts so it never has to join through
+    // analyses (which carries no user_id). See the column comment in schema.ts.
+    await db.update(schema.assets).set({ facts }).where(eq(schema.assets.id, asset.id));
 
     const read = await readStyle({ imageUrl: asset.storageKey, facts, findings: trackA.findings });
 

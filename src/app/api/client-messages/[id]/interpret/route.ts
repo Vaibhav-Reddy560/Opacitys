@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { readSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { interpretClientMessage } from "@/lib/ai/client-interpretation";
 
 export const runtime = "nodejs";
@@ -11,14 +11,8 @@ export const maxDuration = 60;
 // the client probably meant, and persists it (upsert — a re-run replaces the
 // prior interpretation rather than accumulating duplicates).
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await readSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in to interpret this entry." }, { status: 401 });
-  }
-
-  if (session.kind === "guest") {
-    return NextResponse.json({ error: "No entry found." }, { status: 404 });
-  }
+  const { session, error } = await requireUser();
+  if (error) return error;
 
   const { id } = await params;
   let message: typeof schema.clientMessages.$inferSelect;

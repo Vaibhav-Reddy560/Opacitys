@@ -3,11 +3,13 @@ import Link from "next/link";
 import { eq, desc } from "drizzle-orm";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { db, schema } from "@/lib/db";
+import { readSession } from "@/lib/auth/session";
 import { StyleBlend } from "@/components/identify/style-blend";
 import type { MeasuredFacts } from "@/lib/measure";
 
 export default async function IdentifyResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await readSession();
 
   const [row] = await db
     .select({
@@ -15,13 +17,14 @@ export default async function IdentifyResultPage({ params }: { params: Promise<{
       error: schema.analyses.error,
       raw: schema.analyses.raw,
       imageUrl: schema.assets.storageKey,
+      userId: schema.assets.userId,
     })
     .from(schema.analyses)
     .innerJoin(schema.assets, eq(schema.assets.id, schema.analyses.assetId))
     .where(eq(schema.analyses.id, id))
     .limit(1);
 
-  if (!row) notFound();
+  if (!row || row.userId !== session?.userId) notFound();
 
   const shell = (children: React.ReactNode) => (
     <div className="px-6 py-10 lg:px-10 lg:py-12">

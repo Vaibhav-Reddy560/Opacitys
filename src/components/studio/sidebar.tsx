@@ -17,15 +17,21 @@ import {
   Menu,
   X,
   LogOut,
+  LibraryBig,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TitleImage } from "@/components/brand/title-image";
 import { PrismIcon } from "@/components/brand/prism";
 import { MODULES, STATUS_LABEL } from "@/lib/copy";
-import { SPECTRUM } from "@/lib/critique/spectrum";
-import type { Dimension } from "@/lib/critique/types";
+import { META_ACCENT, moduleAccent } from "@/lib/critique/spectrum";
 import { signOut } from "@/lib/auth/actions";
-import type { SessionKind } from "@/lib/auth/token";
+import { signOutOfFirebase } from "@/lib/firebase/client";
+
+interface SidebarUser {
+  name: string | null;
+  email: string;
+  image: string | null;
+}
 
 const ICONS: Record<string, typeof Layers> = {
   critique: ScanEye,
@@ -40,9 +46,19 @@ const ICONS: Record<string, typeof Layers> = {
   rights: Scale,
 };
 
-export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null }) {
+export function StudioSidebar({ user, hasSession }: { user: SidebarUser | null; hasSession: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  async function handleSignOut() {
+    // Firebase's own client session has to be cleared explicitly — our
+    // cookie (destroyed by the signOut server action below) is what every
+    // route actually checks, but leaving the Firebase side signed in would
+    // let a future Google-button click silently re-auth as the same account
+    // with no picker shown.
+    await signOutOfFirebase();
+    await signOut();
+  }
 
   return (
     <>
@@ -76,11 +92,37 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
             <TitleImage width={591} height={88} className="w-[88%] h-auto" priority />
           </Link>
 
+          <Link
+            href="/studio/library"
+            onClick={() => setOpen(false)}
+            data-cursor-accent={META_ACCENT}
+            className={cn(
+              "group relative mb-3 flex items-center gap-3 rounded-lg px-2.5 py-2 text-[13.5px] transition-colors",
+              pathname.startsWith("/studio/library")
+                ? "bg-white/[0.06] text-foreground"
+                : "text-foreground/62 hover:bg-white/[0.03] hover:text-foreground/90",
+            )}
+          >
+            {pathname.startsWith("/studio/library") && (
+              <span
+                aria-hidden
+                className="absolute inset-y-1.5 left-0 w-[2px] rounded-full"
+                style={{ background: META_ACCENT, boxShadow: `0 0 10px ${META_ACCENT}` }}
+              />
+            )}
+            <PrismIcon accent={META_ACCENT} size={28} className="shrink-0">
+              <LibraryBig className="size-3.5 shrink-0" aria-hidden />
+            </PrismIcon>
+            <span className="flex-1">Your work</span>
+          </Link>
+
+          <div className="mb-3 border-t border-white/[0.07]" />
+
           <nav className="flex-1 space-y-0.5">
             {MODULES.map((m) => {
               const Icon = ICONS[m.slug] ?? Layers;
               const active = pathname === m.href || pathname.startsWith(m.href + "/");
-              const accent = SPECTRUM[m.dimension as Dimension]?.color;
+              const accent = moduleAccent(m);
               return (
                 <Link
                   key={m.slug}
@@ -114,7 +156,7 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
                       className="rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.08em] text-foreground/50"
                       title={STATUS_LABEL[m.status]}
                     >
-                      {m.status === "partial" ? "WIP" : "Soon"}
+                      Soon
                     </span>
                   )}
                 </Link>
@@ -123,12 +165,20 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
           </nav>
 
           <div className="mt-4 space-y-2.5 border-t border-white/[0.07] pt-4">
-            {sessionKind === "guest" && (
-              <div className="flex items-center gap-2 px-2.5">
-                <span className="size-1.5 rounded-full bg-[oklch(0.85_0.16_95)]" aria-hidden />
-                <span className="text-[11.5px] text-foreground/52">
-                  Guest session — nothing is saved to a profile
-                </span>
+            {user && (
+              <div className="flex items-center gap-2.5 px-2.5 py-1">
+                {user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- external Google avatar URL, not in next.config's image domains
+                  <img src={user.image} alt="" className="size-6 shrink-0 rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/[0.06] text-[10px] text-foreground/62">
+                    {(user.name ?? user.email)[0]?.toUpperCase()}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-[12.5px] text-foreground/85">{user.name ?? user.email}</p>
+                  {user.name && <p className="truncate text-[10.5px] text-foreground/48">{user.email}</p>}
+                </div>
               </div>
             )}
 
@@ -139,16 +189,15 @@ export function StudioSidebar({ sessionKind }: { sessionKind: SessionKind | null
               Back to site
             </Link>
 
-            {sessionKind && (
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] text-foreground/52 transition-colors hover:bg-white/[0.03] hover:text-foreground/85"
-                >
-                  <LogOut className="size-3.5" aria-hidden />
-                  Sign out
-                </button>
-              </form>
+            {hasSession && (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] text-foreground/52 transition-colors hover:bg-white/[0.03] hover:text-foreground/85"
+              >
+                <LogOut className="size-3.5" aria-hidden />
+                Sign out
+              </button>
             )}
           </div>
         </div>

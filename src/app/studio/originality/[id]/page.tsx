@@ -3,6 +3,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import { db, schema } from "@/lib/db";
+import { readSession } from "@/lib/auth/session";
 import { PrismPanel, OpacityMeter } from "@/components/brand/prism";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import type { CrowdingResult } from "@/lib/originality/read";
@@ -14,6 +15,7 @@ const BASIS_NOTE =
 
 export default async function OriginalityResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await readSession();
 
   const [row] = await db
     .select({
@@ -21,12 +23,13 @@ export default async function OriginalityResultPage({ params }: { params: Promis
       result: schema.originalityChecks.result,
       saturationScore: schema.originalityChecks.saturationScore,
       assetId: schema.originalityChecks.assetId,
+      userId: schema.originalityChecks.userId,
     })
     .from(schema.originalityChecks)
     .where(eq(schema.originalityChecks.id, id))
     .limit(1);
 
-  if (!row) notFound();
+  if (!row || row.userId !== session?.userId) notFound();
 
   let imageUrl: string | null = null;
   if (row.assetId) {

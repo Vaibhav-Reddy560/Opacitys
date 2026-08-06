@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
+import { requireUser } from "@/lib/auth/session";
+import { db, schema } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,6 +47,9 @@ Return ONLY valid JSON:
 // use and licensing. Deliberately never the sole word on the subject — the
 // page renders its own persistent disclaimer around this response.
 export async function POST(req: Request) {
+  const { session, error: authError } = await requireUser();
+  if (authError) return authError;
+
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "A question and country are required." }, { status: 400 });
@@ -72,7 +77,18 @@ export async function POST(req: Request) {
       ],
     });
 
-    return NextResponse.json(data);
+    const [row] = await db
+      .insert(schema.rightsAnswers)
+      .values({
+        userId: session.userId,
+        question: parsed.data.question,
+        country: parsed.data.country,
+        result: data,
+        model: `groq/${MODELS.fast}`,
+      })
+      .returning({ id: schema.rightsAnswers.id });
+
+    return NextResponse.json({ id: row.id, ...data });
   } catch (err) {
     if (err instanceof GroqRateLimitError) {
       return NextResponse.json({ error: err.message }, { status: 429 });

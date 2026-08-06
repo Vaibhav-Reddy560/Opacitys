@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { readSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { measureImageFull } from "@/lib/measure";
 import { readOriginality } from "@/lib/originality/read";
 import { GroqRateLimitError, MODELS } from "@/lib/ai/models";
@@ -20,16 +20,8 @@ const bodySchema = z.object({
 // result, returns { id }. assetId is optional — a described-only direction
 // is a fully valid check, an attached sketch just adds a second read stage.
 export async function POST(req: Request) {
-  const session = await readSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in to use Originality." }, { status: 401 });
-  }
-  if (session.kind === "guest") {
-    return NextResponse.json(
-      { error: "Guest sessions aren't saved — create an account to run this." },
-      { status: 403 },
-    );
-  }
+  const { session, error } = await requireUser();
+  if (error) return error;
   if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
       { error: "GROQ_API_KEY is not set — add it to .env.local to use Originality." },
@@ -57,11 +49,14 @@ export async function POST(req: Request) {
 
   try {
     let facts;
-    if (imageUrl) {
+    if (imageUrl && parsed.data.assetId) {
       const imageRes = await fetch(imageUrl);
       if (!imageRes.ok) throw new Error(`Could not fetch the uploaded image (${imageRes.status}).`);
       const imageBytes = Buffer.from(await imageRes.arrayBuffer());
       ({ facts } = await measureImageFull(imageBytes));
+      // Previously computed and dropped on the floor once the prompt was
+      // built. Same facts Fingerprint's palette/type rollup reads.
+      await db.update(schema.assets).set({ facts }).where(eq(schema.assets.id, parsed.data.assetId));
     }
 
     const result = await readOriginality({ description: parsed.data.description, imageUrl, facts });

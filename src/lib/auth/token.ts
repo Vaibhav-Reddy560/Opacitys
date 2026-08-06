@@ -7,7 +7,11 @@
 // duplicating the signing logic.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type SessionKind = "user" | "guest";
+// Narrowed to a single value deliberately, not simplified away to `string`:
+// this is what makes every `session.kind === "guest"` branch across the
+// codebase a compile error the moment the guest path is removed, instead of
+// dead code that silently never runs.
+export type SessionKind = "user";
 
 export interface SessionPayload {
   userId: string;
@@ -71,8 +75,7 @@ export function verifyToken(token: string | undefined | null): SessionPayload | 
     const payload = JSON.parse(
       Buffer.from(payloadB64, "base64url").toString("utf8"),
     ) as SessionPayload;
-    const validKind = payload.kind === "user" || payload.kind === "guest";
-    if (typeof payload.userId !== "string" || !validKind) return null;
+    if (typeof payload.userId !== "string" || payload.kind !== "user") return null;
     if (typeof payload.exp !== "number" || payload.exp < Math.floor(Date.now() / 1000)) {
       return null;
     }

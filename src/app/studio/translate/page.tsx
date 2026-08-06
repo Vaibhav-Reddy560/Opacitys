@@ -8,12 +8,12 @@ import { ChromeButton } from "@/components/ui/chrome-button";
 import { InterpretationPanels } from "@/components/studio/interpretation-panels";
 import { VoiceMicButton } from "@/components/voice/voice-mic-button";
 import { MODULES } from "@/lib/copy";
-import { SPECTRUM } from "@/lib/critique/spectrum";
+import { CORRESPONDENCE_ACCENT } from "@/lib/critique/spectrum";
 import type { ClientInterpretation } from "@/lib/ai/client-interpretation";
 import { fetchJson, readJsonSafe } from "@/lib/http";
 
 const MODULE = MODULES.find((m) => m.slug === "translate")!;
-const ACCENT = SPECTRUM.balance.color;
+const ACCENT = CORRESPONDENCE_ACCENT;
 
 const CHANNELS = ["Email", "Slack", "WhatsApp / SMS", "Call notes", "In person", "Other"];
 

@@ -106,15 +106,23 @@ export const MODULES = [
     name: "Rebuild",
     tagline: "Take a design apart, then watch it come back",
     body:
-      "Photograph a poster or a logo. Opacitys separates it into layers and elements, names them, and reconstructs it step by step — narrating each shape, gradient and effect as it goes, in an editor you can take over at any point.",
+      "Upload a poster or a logo. Opacitys separates it into real layers — shapes, type, gradients, an image where one genuinely belongs — names each one, and replays the order it was likely built in. Rename, recolor, hide, reorder or export any layer as SVG.",
     dimension: "typography",
-    status: "planned",
-    input: "A photograph of a poster, logo, or finished piece",
-    output: "The same design, rebuilt layer by layer inside an editor you can take over",
+    // Wired end to end. Deterministic vectorization + classification (no
+    // model call) — a marching-squares trace, then 8 rule-based stages
+    // (photo detection, text grouping, gradient fitting, primitive shapes,
+    // shadows, hierarchy, confidence gating) decide what each layer is.
+    // One optional Groq vision call (qwen) only NAMES the already-measured
+    // layers; it never moves geometry. Works well on flat graphic design;
+    // a photographic upload is kept as one honest image layer instead of
+    // being forced into shapes it was never made of.
+    status: "live",
+    input: "An image of a poster, logo, or finished piece — works best on flat graphic design",
+    output: "Every layer named and colored, in the order it was likely built, editable and exportable as SVG",
     steps: [
-      "Separates the image into its component layers and elements",
-      "Names each one and plans the order it was likely built in",
-      "Reconstructs it step by step, narrating the shape, gradient or effect at each stage",
+      "Separates the image into real vector layers — shapes, type, gradients — or keeps a photographic region as one image layer",
+      "Classifies and names each one, with a confidence score so an uncertain read never reads as fact",
+      "Replays the likely build order, and every layer can be renamed, recolored, hidden, reordered or exported",
     ],
   },
   {
@@ -142,15 +150,19 @@ export const MODULES = [
     name: "Currents",
     tagline: "Read the room, and the reason",
     body:
-      "What is moving right now, where it came from, why it caught, and how to execute it — traced back to the design philosophy underneath rather than left as a mood board.",
+      "Name a category, platform or brand and it searches the live web — within the window you pick — for what's actually moving, where it came from, why it's catching on, and how to execute it. Every claim is pinned to the page it came from.",
     dimension: "layout",
-    status: "planned",
-    input: "A category, platform, or brand you want a read on",
-    output: "What is moving right now, why it caught on, and how to execute it yourself",
+    // Wired end to end. Needs GROQ_API_KEY — the search and the write-up
+    // both run on Groq (browser search + structured synthesis), no
+    // DATABASE_URL-external service. Recent reads for the same scope are
+    // served from cache rather than re-searched.
+    status: "live",
+    input: "A category, platform, or brand you want a read on, and how far back to look",
+    output: "Named, distinct currents — what they look like, why they caught on, how to execute them, and the sources",
     steps: [
-      "Scans current articles, reels and portfolios in that space",
-      "Traces each trend back to the design philosophy underneath it",
-      "Turns that into a concrete, step-by-step way to execute it",
+      "Searches the live web for recent, dated writing on that scope",
+      "Names 3-5 distinct currents, each traced to where it came from and why it's catching on now",
+      "Turns each into concrete execution steps, with every claim linked back to its source",
     ],
   },
   {
@@ -176,15 +188,20 @@ export const MODULES = [
     name: "Instruments",
     tagline: "Know where everything is",
     body:
-      "Current, version-aware knowledge of the apps you work in. When a menu moves, the answer moves with it — and when a KB cannot be sure, it reads your screenshot and points at the real control.",
+      "Attach a screenshot and it reads your actual screen to point at the real control. Ask without one and it searches current docs and changelogs instead — either way, the answer is grounded in something live, not a stored guess.",
     dimension: "balance",
-    status: "planned",
+    // Wired end to end. Needs GROQ_API_KEY — the screenshot path is one
+    // vision call (qwen), the no-screenshot path is the same live-search +
+    // structure pattern as Currents (gpt-oss-120b), capped tighter to share
+    // Groq's daily budget. Recent research-path answers for the same
+    // question are served from cache; screenshot answers never are.
+    status: "live",
     input: "A question about a tool, or a screenshot of one",
-    output: "Where the control actually is, in the version you are running",
+    output: "Where the control actually is, or what a live search of current docs found",
     steps: [
-      "Keeps current, version-aware knowledge of Figma, Photoshop and the rest",
-      "Updates the answer the moment a menu or panel moves",
-      "Falls back to reading your screenshot when the knowledge base cannot be sure",
+      "A screenshot is read directly against what's actually visible — no search, no stored knowledge",
+      "Without one, it searches current docs, changelogs and help centres instead",
+      "Every research-path claim links back to the page it came from; repeat questions are served from a week-long cache",
     ],
   },
   {
@@ -239,15 +256,22 @@ export const MODULES = [
     name: "Fingerprint",
     tagline: "Your style, recorded over time",
     body:
-      "Your uploads build a picture of how you actually work — the palettes, the type, the moves you return to. It tracks your portfolio numbers, and gives you evidence when someone calls your work a template.",
+      "Every Critique, Identify and Originality read you've run, aggregated into one record — the styles you keep returning to, your measured strengths and recurring notes, the palette you reach for. Nothing here is guessed; a dimension without enough signal says so instead of scoring zero.",
     dimension: "rhythm",
-    status: "partial",
-    input: "Your uploads and portfolio links, over time",
-    output: "A record of your actual style — evidence, not opinion",
+    // Wired end to end. Entirely derived from rows Critique/Identify/
+    // Originality already write — no new model capability needed for the
+    // measured sections. The one model call (a written summary of the
+    // aggregate) is opt-in and cached, never automatic. Portfolio tracking
+    // is a link, not a number: Behance's public API is closed and Dribbble
+    // v2 no longer returns view/like counts, so neither platform can back
+    // that claim any more.
+    status: "live",
+    input: "Your uploads — nothing new to provide",
+    output: "Your measured style, craft scores and palette, plus recurring notes across everything you've made",
     steps: [
-      "Builds a picture of the palettes, type and moves you keep returning to",
-      "Tracks your portfolio numbers across Behance and Dribbble",
-      "Gives you something concrete when someone calls your work a template",
+      "Aggregates every completed Critique, Identify and Originality run into one record",
+      "States plainly when a dimension doesn't have enough signal yet, rather than scoring it zero",
+      "Turns the aggregate into a short written read, only when you ask for one",
     ],
   },
   {
@@ -273,7 +297,6 @@ export type ModuleDef = (typeof MODULES)[number];
 
 export const STATUS_LABEL: Record<ModuleDef["status"], string> = {
   live: "Ready",
-  partial: "In progress",
   planned: "Next",
 };
 

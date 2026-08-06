@@ -1,32 +1,7 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { AuthShell } from "@/components/auth/auth-shell";
-import { AuthForm } from "@/components/auth/auth-form";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Create an account — Opacitys" };
-
+// There's only one door now — Google sign-in creates an account on first use,
+// same as it signs one in on every use after. No separate signup flow needed.
 export default function SignupPage() {
-  return (
-    <AuthShell
-      title="Start at ten percent"
-      lede="Bring in one design and the studio starts learning how you work."
-      footer={
-        <>
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-foreground/85 underline-offset-4 transition-colors hover:underline"
-          >
-            Sign in
-          </Link>
-        </>
-      }
-    >
-      {/* AuthForm reads ?next= via useSearchParams, which Next requires a
-          Suspense boundary for on an otherwise-static page. */}
-      <Suspense fallback={null}>
-        <AuthForm mode="signup" />
-      </Suspense>
-    </AuthShell>
-  );
+  redirect("/login");
 }

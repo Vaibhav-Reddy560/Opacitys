@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateJson, GroqRateLimitError, MODELS } from "@/lib/ai/models";
+import { requireUser } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -32,6 +33,9 @@ Return ONLY valid JSON: { "cleanedText": "..." }`;
 // Llama (the same GROQ_API_KEY pipeline as every other AI feature) to strip
 // filler words and fix formatting — the actual "high-end" step.
 export async function POST(req: Request) {
+  const { error: authError } = await requireUser();
+  if (authError) return authError;
+
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "A transcript is required." }, { status: 400 });

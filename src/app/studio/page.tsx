@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { PrismIcon, PrismPanel, PrismRule, OpacityMeter } from "@/components/brand/prism";
 import { MODULES, OPACITY_STAGES, STATUS_LABEL } from "@/lib/copy";
-import { SPECTRUM } from "@/lib/critique/spectrum";
-import type { Dimension } from "@/lib/critique/types";
+import { moduleAccent } from "@/lib/critique/spectrum";
 
 const ICONS: Record<string, typeof Layers> = {
   critique: ScanEye,
@@ -84,7 +83,7 @@ export default function StudioHome() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {MODULES.map((m) => {
           const Icon = ICONS[m.slug] ?? Layers;
-          const accent = SPECTRUM[m.dimension as Dimension]?.color;
+          const accent = moduleAccent(m);
           return (
             <Link key={m.slug} href={m.href} className="group block">
               <PrismPanel accent={accent} className="h-full p-5">

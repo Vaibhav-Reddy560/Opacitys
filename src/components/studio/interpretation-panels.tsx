@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { PrismPanel } from "@/components/brand/prism";
-import { SPECTRUM } from "@/lib/critique/spectrum";
+import { SPECTRUM, CORRESPONDENCE_ACCENT } from "@/lib/critique/spectrum";
 import type { ClientInterpretation } from "@/lib/ai/client-interpretation";
 
 const CONFIDENCE_COLOR: Record<string, string> = {
@@ -65,7 +65,7 @@ export function InterpretationPanels({ result }: { result: ClientInterpretation 
       )}
 
       {result.costly.length > 0 && (
-        <PrismPanel accent={SPECTRUM.balance.color} className="p-6 sm:p-7">
+        <PrismPanel accent={CORRESPONDENCE_ACCENT} className="p-6 sm:p-7">
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">
             Worth talking through first
           </h2>
