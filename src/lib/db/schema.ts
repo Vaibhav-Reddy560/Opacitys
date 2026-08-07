@@ -310,6 +310,55 @@ export const styleReads = pgTable("style_reads", {
 // Decomposition & editor (Phase 4/5)
 // ---------------------------------------------------------------------------
 
+/**
+ * One row per generated image in a Rebuild session — the version chain.
+ *
+ * Rebuild starts from an upload (version 0, `instruction` null) and every
+ * edit produces a new row whose `parentId` points at the version it was
+ * generated from. Editing is generative: the model returns a NEW image
+ * rather than patching pixels, so each version owns its own image and its
+ * own freshly-detected `layers` set.
+ */
+export const rebuildVersions = pgTable(
+  "rebuild_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => analyses.id, { onDelete: "cascade" }),
+    // Self-reference left unenforced, same call as layers.parentId below —
+    // a version chain is only ever walked from a known root.
+    parentId: uuid("parent_id"),
+    // Null until generation finishes; a queued/running row has no image yet.
+    imageUrl: text("image_url"),
+    width: integer("width"),
+    height: integer("height"),
+    instruction: text("instruction"), // null for the original upload
+    label: text("label"), // short checkpoint name, e.g. "Button text updated"
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    stage: text("stage"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("rebuild_versions_analysis_created_idx").on(t.analysisId, t.createdAt)],
+);
+
+/**
+ * Rebuild's semantic layers — one row per element the detector found in a
+ * given version's image (a logo, a button, a text block, a section).
+ *
+ * Several columns carry a different meaning than the Phase-0 design
+ * intended, kept rather than renamed so the table and its migrations stay
+ * stable:
+ *   kind     -> logo | text | button | image | icon | shape | section | group
+ *   geometry -> { bbox: [x, y, w, h] } in the version image's pixel space,
+ *               plus an optional `mask` polygon when the detector returns one
+ *   maskKey  -> the cropped THUMBNAIL's Blob URL (not a mask bitmap)
+ *   name     -> the auto-numbered label ("text", "text 2", "button 3")
+ *   parentId -> containment nesting ("navigation bar" owns "logo")
+ * `style` and `confidence` still mean what they say. `geometry.d` (the old
+ * vector path) is no longer written.
+ */
 export const layers = pgTable(
   "layers",
   {
@@ -317,26 +366,25 @@ export const layers = pgTable(
     analysisId: uuid("analysis_id")
       .notNull()
       .references(() => analyses.id, { onDelete: "cascade" }),
+    // Which version's image this layer was detected in. Nullable only
+    // because rows written by the old vector pipeline predate versioning.
+    versionId: uuid("version_id"),
     parentId: uuid("parent_id"),
     zIndex: integer("z_index").notNull(),
-    kind: text("kind").notNull(), // shape | text | image | gradient | effect
+    kind: text("kind").notNull(),
     geometry: jsonb("geometry").notNull(),
     style: jsonb("style"),
     maskKey: text("mask_key"),
     confidence: real("confidence").notNull(),
-    // The naming pass's output (Rebuild) plus inspector edit state — both
-    // added on top of the Phase-0 shape, not part of the original design.
-    // name/note default to the deterministic primitive-fitter label until a
-    // model call (or the user) overwrites them; hidden lets the inspector
-    // toggle visibility without deleting the row.
     name: text("name"),
     note: text("note"),
     hidden: boolean("hidden").notNull().default(false),
   },
   (t) => [
-    // Every read is "all layers for this analysis, in build order" — the
-    // table has had an FK since migration 0001 but no index at all.
     index("layers_analysis_zindex_idx").on(t.analysisId, t.zIndex),
+    // The real read path now that layers are per-version: "every layer for
+    // this version, in order".
+    index("layers_version_zindex_idx").on(t.versionId, t.zIndex),
   ],
 );
 

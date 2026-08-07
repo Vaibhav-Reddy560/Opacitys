@@ -104,25 +104,29 @@ export const MODULES = [
     slug: "rebuild",
     href: "/studio/rebuild",
     name: "Rebuild",
-    tagline: "Take a design apart, then watch it come back",
+    tagline: "Take a design apart, then change it by asking",
     body:
-      "Upload a poster or a logo. Opacitys separates it into real layers — shapes, type, gradients, an image where one genuinely belongs — names each one, and replays the order it was likely built in. Rename, recolor, hide, reorder or export any layer as SVG.",
+      "Upload a poster, a logo, a screen. Opacitys finds the real elements inside it — the logo, each block of type, each button — names them, and nests them under the sections they sit in. Point at one, describe the change you want, and it redraws the design with that change. Every version is kept.",
     dimension: "typography",
-    // Wired end to end. Deterministic vectorization + classification (no
-    // model call) — a marching-squares trace, then 8 rule-based stages
-    // (photo detection, text grouping, gradient fitting, primitive shapes,
-    // shadows, hierarchy, confidence gating) decide what each layer is.
-    // One optional Groq vision call (qwen) only NAMES the already-measured
-    // layers; it never moves geometry. Works well on flat graphic design;
-    // a photographic upload is kept as one honest image layer instead of
-    // being forced into shapes it was never made of.
+    // Wired end to end, on two free, no-card providers. Detection is Gemini
+    // (free tier, 500/day) grounding the image into named bounding boxes —
+    // open-vocabulary, so it returns "button"/"navigation bar", not a fixed
+    // class list. Editing is Pollinations.ai's "kontext" model, chosen
+    // specifically because Gemini's own image-editing model requires a
+    // billing-enabled Google Cloud project even at $0 usage; Pollinations
+    // never asks for a card, but a fresh account starts at 0 Pollen and
+    // must earn some via its own free Quests before editing works — see
+    // POLLINATIONS_API_KEY in .env.local.example. Editing REGENERATES the
+    // frame rather than patching pixels — the result is a new image very
+    // close to the original, not a byte-identical copy of it, and the copy
+    // below says so rather than implying a lossless edit.
     status: "live",
-    input: "An image of a poster, logo, or finished piece — works best on flat graphic design",
-    output: "Every layer named and colored, in the order it was likely built, editable and exportable as SVG",
+    input: "An image of a poster, logo, or finished screen",
+    output: "Its elements found and named, and a redrawn version for any change you describe",
     steps: [
-      "Separates the image into real vector layers — shapes, type, gradients — or keeps a photographic region as one image layer",
-      "Classifies and names each one, with a confidence score so an uncertain read never reads as fact",
-      "Replays the likely build order, and every layer can be renamed, recolored, hidden, reordered or exported",
+      "Finds the real elements — logo, type, buttons, imagery — and nests them under the sections they belong to",
+      "Select a layer, or drag a box over any part of the image, and describe the change in plain language",
+      "Redraws the design with that change and keeps it as a named version, so nothing is overwritten",
     ],
   },
   {
