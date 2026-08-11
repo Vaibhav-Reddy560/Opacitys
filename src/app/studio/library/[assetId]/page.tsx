@@ -49,7 +49,12 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ as
               className="max-h-[420px] w-full rounded-xl border border-white/[0.08] object-contain"
             />
             <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-[12px] text-foreground/52">
-              <span>{asset.originalName ?? "Untitled upload"}</span>
+              <span className="flex items-center gap-1.5">
+                {asset.originalName ?? "Untitled upload"}
+                {asset.placeLabel && (
+                  <span className="text-foreground/40">· {asset.placeLabel}</span>
+                )}
+              </span>
               <span className="font-mono text-[10.5px] text-foreground/40">
                 {asset.width && asset.height ? `${asset.width}×${asset.height} · ` : ""}
                 {new Date(asset.createdAt).toLocaleDateString()}

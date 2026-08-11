@@ -10,6 +10,7 @@ import { VoiceMicButton } from "@/components/voice/voice-mic-button";
 import { AssetPicker } from "@/components/library/asset-picker";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import { fetchJson } from "@/lib/http";
+import { appendFix, type Fix } from "@/lib/geo/capture";
 import type { AssetSummary } from "@/lib/library/queries";
 
 const ACCENT = SPECTRUM.balance.color;
@@ -76,11 +77,12 @@ export function ToolsForm() {
     [teardown],
   );
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, fix: Fix | null) {
     setError(null);
     setAttaching(true);
     try {
       const params = new URLSearchParams({ filename: file.name });
+      appendFix(params, fix);
       const { assetId: id } = await fetchJson<{ assetId: string }>(
         `/api/upload?${params}`,
         { method: "POST", headers: { "Content-Type": file.type }, body: file },

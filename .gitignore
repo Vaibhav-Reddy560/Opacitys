@@ -17,6 +17,11 @@
 /.next/
 /out/
 
+# copied from node_modules/maplibre-gl/dist by scripts/copy-maplibre-worker.mjs
+# (predev/prebuild) — regenerated, not committed, so it can't drift from the
+# installed maplibre-gl version.
+/public/maplibre/
+
 # production
 /build
 

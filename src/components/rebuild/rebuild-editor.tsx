@@ -401,8 +401,21 @@ export function RebuildEditor({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          className="relative mt-4 select-none overflow-hidden rounded-xl border border-white/[0.08] bg-black/40"
-          style={{ cursor: tool === "marquee" ? "crosshair" : "default", touchAction: "none" }}
+          className="relative mt-4 select-none overflow-hidden rounded-xl border border-white/[0.08]"
+          style={{
+            cursor: tool === "marquee" ? "crosshair" : "default",
+            touchAction: "none",
+            // A neutral checkerboard, not the app's dark theme — transparency
+            // needs a backdrop that reads as "nothing here" regardless of
+            // theme, the same convention every design tool uses. Without it,
+            // a transparent PNG with dark art is nearly invisible on a plain
+            // dark panel and easy to mistake for a broken render.
+            backgroundColor: "#e8e8e8",
+            backgroundImage:
+              "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)",
+            backgroundSize: "16px 16px",
+            backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+          }}
         >
           {version?.imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element -- external Blob URL, not a local asset */

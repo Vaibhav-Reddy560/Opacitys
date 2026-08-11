@@ -1,0 +1,1 @@
+ALTER TABLE "trend_reads" ALTER COLUMN "rate_limit_reset_at" SET DATA TYPE timestamp with time zone;

@@ -7,6 +7,7 @@ import { OpacityMeter } from "@/components/brand/prism";
 import { AssetPicker } from "@/components/library/asset-picker";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import { fetchJson } from "@/lib/http";
+import { appendFix, type Fix } from "@/lib/geo/capture";
 import type { AssetSummary } from "@/lib/library/queries";
 
 const ACCENT = SPECTRUM.typography.color;
@@ -147,7 +148,7 @@ export function RebuildForm() {
     }
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, fix: Fix | null) {
     setError(null);
     teardown();
     try {
@@ -155,6 +156,7 @@ export function RebuildForm() {
       setMeter(METER_START.uploading);
       const { width, height } = await readImageDimensions(file);
       const params = new URLSearchParams({ width: String(width), height: String(height), filename: file.name });
+      appendFix(params, fix);
       const { assetId } = await fetchJson<{ assetId: string }>(
         `/api/upload?${params}`,
         { method: "POST", headers: { "Content-Type": file.type }, body: file },

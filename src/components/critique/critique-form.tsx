@@ -7,6 +7,7 @@ import { OpacityMeter } from "@/components/brand/prism";
 import { AssetPicker } from "@/components/library/asset-picker";
 import { DIMENSION_ORDER, SPECTRUM } from "@/lib/critique/spectrum";
 import { fetchJson } from "@/lib/http";
+import { appendFix, type Fix } from "@/lib/geo/capture";
 import type { AssetSummary } from "@/lib/library/queries";
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -149,7 +150,7 @@ export function CritiqueForm() {
     }
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, fix: Fix | null) {
     setError(null);
     teardown(); // guards a double-submit and React StrictMode's double-invoke
 
@@ -158,6 +159,7 @@ export function CritiqueForm() {
       setMeter(METER_START.uploading);
       const { width, height } = await readImageDimensions(file);
       const params = new URLSearchParams({ width: String(width), height: String(height), filename: file.name });
+      appendFix(params, fix);
       const { assetId } = await fetchJson<{ assetId: string }>(
         `/api/upload?${params}`,
         { method: "POST", headers: { "Content-Type": file.type }, body: file },

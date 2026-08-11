@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Dropzone } from "@/components/upload/dropzone";
 import { AssetPicker } from "@/components/library/asset-picker";
 import { fetchJson } from "@/lib/http";
+import { appendFix, type Fix } from "@/lib/geo/capture";
 import type { AssetSummary } from "@/lib/library/queries";
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -39,12 +40,13 @@ export function IdentifyForm() {
     router.push(`/studio/identify/${analysisId}`);
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, fix: Fix | null) {
     setError(null);
     try {
       setStatus("uploading");
       const { width, height } = await readImageDimensions(file);
       const params = new URLSearchParams({ width: String(width), height: String(height), filename: file.name });
+      appendFix(params, fix);
       const { assetId } = await fetchJson<{ assetId: string }>(
         `/api/upload?${params}`,
         { method: "POST", headers: { "Content-Type": file.type }, body: file },

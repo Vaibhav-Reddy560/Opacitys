@@ -38,50 +38,65 @@ export type ModelId = (typeof MODELS)[keyof typeof MODELS];
 // Groq's free tier is genuinely free but genuinely rate-limited — worth
 // surfacing honestly to the caller rather than presenting a generic 502.
 //
-// There are two *different* limits behind the same 429, and conflating them
-// gives the user actively wrong advice:
-//   - per-minute (TPM ~8k, RPM): transient. Waiting a second or two fixes it.
-//   - per-day (TPD 200k, RPD 1k): not transient at all. Measured live — one
-//     browser-search research pass consumed ~199.5k of the 200k daily token
+// Two axes are in play behind the same 429, and conflating either gives the
+// user actively wrong advice:
+//   - scope, minute vs. day: per-minute is transient — waiting a second or
+//     two fixes it. Per-day is not transient at all. Measured live — one
+//     browser-search research pass consumed ~199.5k of the 200k daily TOKEN
 //     allowance, and the API's own reply was "try again in 22m31s". Retrying
 //     that after 1500ms is guaranteed to fail, and telling the user to "wait
-//     a moment" is a lie.
-// So `scope` decides both whether we retry and what we say.
+//     a moment" is a lie. `scope` decides whether withRateLimitRetry retries
+//     at all.
+//   - kind, tokens vs. requests: Groq's daily cap that actually gets hit in
+//     practice (see above) is a TOKEN budget (TPD), not a request count —
+//     calling it a "request budget" is a second, independent lie: the
+//     caller made 2 requests, not anywhere near a request-count limit.
+//     Also NOT a midnight reset — Groq's window is rolling from the moment
+//     of the first counted request, so "Today's" is a third inaccuracy.
 export type RateLimitScope = "minute" | "day";
+export type RateLimitKind = "tokens" | "requests";
 
 export class GroqRateLimitError extends Error {
   readonly scope: RateLimitScope;
+  readonly kind: RateLimitKind;
   /** Seconds until the limit resets, when Groq told us. */
   readonly retryAfterSeconds: number | null;
 
-  constructor(scope: RateLimitScope = "minute", retryAfterSeconds: number | null = null) {
-    super(
-      scope === "day"
-        ? `Today's free-tier request budget on Groq is used up${formatWait(retryAfterSeconds)}.`
-        : `Groq's per-minute rate limit was hit${formatWait(retryAfterSeconds) || " — wait a moment"} and try again.`,
-    );
+  constructor(scope: RateLimitScope = "minute", kind: RateLimitKind = "tokens", retryAfterSeconds: number | null = null) {
+    super(buildRateLimitMessage(scope, kind, retryAfterSeconds));
     this.name = "GroqRateLimitError";
     this.scope = scope;
+    this.kind = kind;
     this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
-function formatWait(seconds: number | null): string {
-  if (seconds === null) return "";
-  if (seconds < 90) return ` — try again in about ${Math.max(1, Math.round(seconds))}s`;
-  return ` — try again in about ${Math.round(seconds / 60)} minutes`;
+function formatDuration(seconds: number | null): string | null {
+  if (seconds === null) return null;
+  if (seconds < 90) return `about ${Math.max(1, Math.round(seconds))}s`;
+  return `about ${Math.round(seconds / 60)} minutes`;
+}
+
+function buildRateLimitMessage(scope: RateLimitScope, kind: RateLimitKind, retryAfterSeconds: number | null): string {
+  const duration = formatDuration(retryAfterSeconds);
+  if (scope === "day") {
+    return `Groq's free daily ${kind} budget is used up — it refills on a rolling window${duration ? `, ${duration} from now` : ""}.`;
+  }
+  return `Groq's per-minute ${kind} limit was hit — ${duration ? `try again in ${duration}` : "wait a moment and try again"}.`;
 }
 
 /**
  * Groq states the window in prose rather than a machine-readable field:
  *   "...on tokens per day (TPD): Limit 200000, Used 199505, Requested 3624.
  *    Please try again in 22m31.727999999s."
- * so this reads the phrase. Anything it can't classify is treated as
- * per-minute, which is the safe default: it retries once and recovers, where
- * mislabelling a per-minute blip as a daily cap would tell the user to come
- * back tomorrow over a two-second problem.
+ * so this reads the phrase. Anything it can't classify as "day" is treated
+ * as per-minute, which is the safe default: it retries once and recovers,
+ * where mislabelling a per-minute blip as a daily cap would tell the user
+ * to come back tomorrow over a two-second problem. Anything it can't
+ * classify as "requests" is treated as tokens — the far more common real
+ * constraint (see the module doc comment above).
  */
-function parseRateLimit(err: unknown): { scope: RateLimitScope; retryAfterSeconds: number | null } {
+function parseRateLimit(err: unknown): { scope: RateLimitScope; kind: RateLimitKind; retryAfterSeconds: number | null } {
   // Defense in depth: every call site below passes `maxRetries: 0` so the
   // real APICallError should always reach here directly, but if any call
   // site is ever added without it, the SDK wraps a retried-out 429 as
@@ -92,6 +107,7 @@ function parseRateLimit(err: unknown): { scope: RateLimitScope; retryAfterSecond
   const text = `${body} ${unwrapped instanceof Error ? unwrapped.message : ""}`;
 
   const scope: RateLimitScope = /per\s*day|\(TPD\)|\(RPD\)/i.test(text) ? "day" : "minute";
+  const kind: RateLimitKind = /\(RPM\)|\(RPD\)|requests per (minute|day)/i.test(text) ? "requests" : "tokens";
 
   // "22m31.727999999s" | "1m26.4s" | "2.5s" | "547ms"
   let retryAfterSeconds: number | null = null;
@@ -101,7 +117,7 @@ function parseRateLimit(err: unknown): { scope: RateLimitScope; retryAfterSecond
       Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0) + Number(m[4] ?? 0) / 1000;
   }
 
-  return { scope, retryAfterSeconds };
+  return { scope, kind, retryAfterSeconds };
 }
 
 function isRateLimit(err: unknown): boolean {
@@ -118,19 +134,33 @@ function isRateLimit(err: unknown): boolean {
 // day-vs-minute message below never fired. Disabling the SDK's own retry
 // makes `withRateLimitRetry` the single retry authority, so the classifier
 // always sees the real `APICallError`.
+// A minute-scope retry is only worth attempting if it actually waits long
+// enough — capped so one retry can't stall a request indefinitely.
+const MAX_AUTO_RETRY_WAIT_MS = 20_000;
+
 async function withRateLimitRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
   try {
     return await fn();
   } catch (err) {
     if (isRateLimit(err)) {
-      const { scope, retryAfterSeconds } = parseRateLimit(err);
-      // A daily cap will still be a daily cap in 1500ms — fail straight
-      // through with the real reset time instead of burning a retry.
+      const { scope, kind, retryAfterSeconds } = parseRateLimit(err);
+      // A daily cap will still be a daily cap after any short wait — fail
+      // straight through with the real reset time instead of burning a
+      // retry. A minute-scope cap IS worth waiting out — but a fixed 1500ms
+      // wait was proven live to be useless whenever Groq reports a longer
+      // real wait (observed: "try again in 16s" — the retry just hit the
+      // same 429 again 14.5s early, having wasted the one retry attempt).
+      // Wait the ACTUAL reported time (plus a small buffer for clock
+      // drift), not a guess.
       if (scope === "minute" && retries > 0) {
-        await new Promise((r) => setTimeout(r, 1500));
+        const waitMs =
+          retryAfterSeconds !== null
+            ? Math.min(Math.ceil(retryAfterSeconds * 1000) + 250, MAX_AUTO_RETRY_WAIT_MS)
+            : 1500;
+        await new Promise((r) => setTimeout(r, waitMs));
         return withRateLimitRetry(fn, retries - 1);
       }
-      throw new GroqRateLimitError(scope, retryAfterSeconds);
+      throw new GroqRateLimitError(scope, kind, retryAfterSeconds);
     }
     throw err;
   }
@@ -161,9 +191,20 @@ const STRICT_SCHEMA_MODELS: Set<string> = new Set([MODELS.reasoning]);
 // verified to still produce well-grounded, evidence-citing output on a
 // real classification prompt, at a fraction of the tokens, so it's used
 // for every qwen call rather than only the one that happened to overflow.
-function groqProviderOptions(model: string, strict: boolean) {
+function groqProviderOptions(
+  model: string,
+  strict: boolean,
+  reasoningEffort?: "none" | "low" | "medium" | "high",
+) {
   const reasoning = REASONING_MODELS.has(model)
-    ? { reasoningFormat: "hidden" as const, ...(model === MODELS.vision ? { reasoningEffort: "none" as const } : {}) }
+    ? {
+        reasoningFormat: "hidden" as const,
+        ...(reasoningEffort
+          ? { reasoningEffort }
+          : model === MODELS.vision
+            ? { reasoningEffort: "none" as const }
+            : {}),
+      }
     : {};
   return { groq: { structuredOutputs: strict, ...reasoning } };
 }
@@ -361,7 +402,24 @@ export async function generateResearched(params: {
       // Groq API: browser_search works and returns real results); this
       // only silences a structurally-impossible type error.
       tools: { browser_search: scopedGroq.tools.browserSearch({}) } as ToolSet,
-      providerOptions: groqProviderOptions(params.model, false),
+      // "low", not "none": unlike qwen's classification-style calls (which
+      // tolerate zero deliberation), this pass has to decide what to search
+      // for and when to stop — some reasoning budget is load-bearing here,
+      // not just overhead. Motivated by a real, measured failure: a single
+      // browser_search research call burned 222,941 tokens (more than the
+      // ENTIRE 200k/day free-tier cap) despite the system prompt asking for
+      // "at most 2 searches, 2 opens" — a request the model has no
+      // structural way to be forced to honor (see the module doc comment on
+      // why `stopWhen`/`maxSteps` can't reach into this tool). Left unset,
+      // this call falls back to Groq's own default reasoning_effort, which
+      // is NOT "none" — the excess is most likely hidden deliberation
+      // between search/open decisions within that one opaque turn, exactly
+      // what reasoningEffort governs. NOT verified against a live call —
+      // Groq's own reported reset time was still in the future when this
+      // was written, so testing it would just re-trigger the same 429. If a
+      // future run still blows the budget, this is the first thing to
+      // re-examine with real usage numbers in hand.
+      providerOptions: groqProviderOptions(params.model, false, "low"),
     });
 
     return {

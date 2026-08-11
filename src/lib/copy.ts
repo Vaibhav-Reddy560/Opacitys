@@ -106,27 +106,36 @@ export const MODULES = [
     name: "Rebuild",
     tagline: "Take a design apart, then change it by asking",
     body:
-      "Upload a poster, a logo, a screen. Opacitys finds the real elements inside it — the logo, each block of type, each button — names them, and nests them under the sections they sit in. Point at one, describe the change you want, and it redraws the design with that change. Every version is kept.",
+      "Upload a poster, a logo, a screen. Opacitys finds the real elements inside it — the logo, each block of type, each button — names them, and nests them under the sections they sit in. Point at one, describe the change you want, and it redraws just that part — everything else, including transparency, stays exactly as it was. Every version is kept.",
     dimension: "typography",
     // Wired end to end, on two free, no-card providers. Detection is Gemini
     // (free tier, 500/day) grounding the image into named bounding boxes —
     // open-vocabulary, so it returns "button"/"navigation bar", not a fixed
-    // class list. Editing is Pollinations.ai's "kontext" model, chosen
-    // specifically because Gemini's own image-editing model requires a
+    // class list. Editing is Pollinations.ai — "gptimage" by default (the
+    // only model tested that renders edited text correctly; FLUX-family
+    // models measurably mangle it), falling back to "klein" for crops whose
+    // ratio doesn't fit gptimage's 3 fixed output sizes. Chosen over
+    // Gemini's own image-editing model specifically because that requires a
     // billing-enabled Google Cloud project even at $0 usage; Pollinations
     // never asks for a card, but a fresh account starts at 0 Pollen and
     // must earn some via its own free Quests before editing works — see
-    // POLLINATIONS_API_KEY in .env.local.example. Editing REGENERATES the
-    // frame rather than patching pixels — the result is a new image very
-    // close to the original, not a byte-identical copy of it, and the copy
-    // below says so rather than implying a lossless edit.
+    // POLLINATIONS_API_KEY in .env.local.example.
+    //
+    // A scoped edit (a selected layer or a dragged region) crops that
+    // region out, edits ONLY the crop, and composites it back onto the
+    // untouched original at full resolution — so a one-word text fix on a
+    // 6000px logo comes back at 6000px with everything else, including the
+    // source's own transparency, pixel-identical outside the edited box.
+    // Only an edit with nothing selected regenerates the whole frame, and
+    // that one really is a new image very close to the original rather
+    // than a byte-identical copy of it.
     status: "live",
     input: "An image of a poster, logo, or finished screen",
     output: "Its elements found and named, and a redrawn version for any change you describe",
     steps: [
       "Finds the real elements — logo, type, buttons, imagery — and nests them under the sections they belong to",
       "Select a layer, or drag a box over any part of the image, and describe the change in plain language",
-      "Redraws the design with that change and keeps it as a named version, so nothing is overwritten",
+      "Redraws just that part at full resolution and keeps it as a named version — everything outside it, including transparency, stays untouched",
     ],
   },
   {
@@ -156,10 +165,13 @@ export const MODULES = [
     body:
       "Name a category, platform or brand and it searches the live web — within the window you pick — for what's actually moving, where it came from, why it's catching on, and how to execute it. Every claim is pinned to the page it came from.",
     dimension: "layout",
-    // Wired end to end. Needs GROQ_API_KEY — the search and the write-up
-    // both run on Groq (browser search + structured synthesis), no
-    // DATABASE_URL-external service. Recent reads for the same scope are
-    // served from cache rather than re-searched.
+    // Wired end to end. Needs GROQ_API_KEY (write-up + structured synthesis)
+    // and TAVILY_API_KEY (the actual web search — src/lib/trends/tavily.ts).
+    // Search moved off Groq's own browser_search tool after a real failure:
+    // that tool ran in one opaque server-side turn with no enforceable step
+    // limit, and a single call once burned more tokens than Groq's entire
+    // daily free-tier budget. Recent reads for the same scope are served
+    // from cache rather than re-searched.
     status: "live",
     input: "A category, platform, or brand you want a read on, and how far back to look",
     output: "Named, distinct currents — what they look like, why they caught on, how to execute them, and the sources",
@@ -175,9 +187,19 @@ export const MODULES = [
     name: "Route",
     tagline: "From brief to build, with what you actually have",
     body:
-      "Give it the client's specifications, your resources and your current skills. It returns practical directions — including ones you have not tried — as an ordered plan naming the tool and the step for each stage.",
+      "Give it the client's specifications, your resources and your current skills. It returns practical directions — including ones you have not tried — as an ordered plan naming the tool and the step for each stage. Ask it anything about the plan afterward — it can explain itself, or fix a step that's genuinely wrong.",
     dimension: "spacing",
-    status: "planned",
+    // Wired end to end. Needs GROQ_API_KEY — one generateJson call
+    // (MODELS.reasoning, provider-enforced JSON schema; a nested plan
+    // needs the strict mode a lighter model doesn't reliably hold to). No
+    // web search: this reasons over the brief and the designer's own
+    // stated resources, not a live-web question, so it stays a single
+    // bounded call. Follow-up questions (src/lib/workflow/turn.ts) are
+    // this app's first real multi-turn conversation — role-tagged history,
+    // capped at 8 prior turns — and can revise the plan itself when a
+    // question exposes something genuinely wrong, keeping the prior
+    // version rather than overwriting it. Shares Currents' Groq quota.
+    status: "live",
     input: "A client brief, plus the tools and skills you actually have",
     output: "An ordered plan naming which tool does which step",
     steps: [
@@ -299,7 +321,11 @@ export const MODULES = [
 
 export type ModuleDef = (typeof MODULES)[number];
 
-export const STATUS_LABEL: Record<ModuleDef["status"], string> = {
+// Typed as the full status union, not `ModuleDef["status"]` — with every
+// module now `"live"`, that union collapses to the single literal `"live"`
+// and would reject the `planned` key as excess. Kept explicit so a future
+// module added as `"planned"` doesn't have to rediscover this.
+export const STATUS_LABEL: Record<"live" | "planned", string> = {
   live: "Ready",
   planned: "Next",
 };

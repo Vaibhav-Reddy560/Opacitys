@@ -10,6 +10,7 @@ export const RESULT_HREF: Record<AnyResultKind, (id: string) => string> = {
   trends: (id) => `/studio/trends/${id}`,
   tools: (id) => `/studio/tools/${id}`,
   rights: (id) => `/studio/rights/${id}`,
+  workflow: (id) => `/studio/workflow/${id}`,
 };
 
 export const KIND_LABEL: Record<AnyResultKind, string> = {
@@ -20,4 +21,5 @@ export const KIND_LABEL: Record<AnyResultKind, string> = {
   trends: "Currents",
   tools: "Instruments",
   rights: "Clearance",
+  workflow: "Route",
 };

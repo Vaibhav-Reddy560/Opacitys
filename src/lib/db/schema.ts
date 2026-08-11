@@ -16,6 +16,7 @@ import {
   timestamp,
   integer,
   real,
+  doublePrecision,
   boolean,
   jsonb,
   vector,
@@ -156,6 +157,27 @@ export const assets = pgTable(
     facts: jsonb("facts"),
     phash: text("phash"),
     embedding: vector("embedding", { dimensions: 768 }),
+    // Where the uploader was when they added this image — the browser's own
+    // Geolocation API at upload time, NOT EXIF (that's where a photo was
+    // TAKEN, often stripped by the OS, and doesn't exist at all for a
+    // screenshot or an exported Figma frame — the app's actual common
+    // case). doublePrecision, not `real`: `real` is float4 (~7 significant
+    // digits), too coarse for a longitude like -122.4194182734912.
+    // Nullable forever — every asset uploaded before this shipped has no
+    // location and never can, and a denied permission prompt must still
+    // produce a normal upload.
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    // Metres, straight from the browser's own `coords.accuracy`. Kept
+    // because a desktop fix is IP-derived and can be tens of km off — the
+    // UI shows "±34 km" rather than implying a precision the number
+    // doesn't have.
+    locationAccuracy: doublePrecision("location_accuracy"),
+    // Reverse-geocoded "Bengaluru, India" (Nominatim). Cosmetic only —
+    // filled in by after() once the upload response has already gone out,
+    // so it can lag behind the coordinates or stay null without affecting
+    // anything that reads lat/lng directly (the map).
+    placeLabel: text("place_label"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
@@ -163,6 +185,8 @@ export const assets = pgTable(
     // Powers the library's "your uploads, newest first" listing — the only
     // per-user lookup on this table before now was the upload insert itself.
     index("assets_user_created_idx").on(t.userId, t.createdAt),
+    // Powers the map view's "this user's located uploads" query.
+    index("assets_user_located_idx").on(t.userId, t.latitude),
   ],
 );
 
@@ -455,6 +479,29 @@ export const trendReads = pgTable(
     sources: jsonb("sources"),
     model: text("model"),
     error: text("error"),
+    // Real Groq token usage for this run (both passes combined, or whatever
+    // pass 1 alone spent before a failure). The budget ledger in
+    // pipeline.ts sums this GLOBALLY (across every user, over Groq's own
+    // rolling 24h window) before starting a new run — Groq's free tier is
+    // one shared API key for the whole app, the same reason the cache in
+    // api/trends/route.ts is deliberately global rather than per-user.
+    tokensUsed: integer("tokens_used"),
+    // Set only when a run fails on a real day-scope Groq 429 (GroqRateLimitError
+    // in src/lib/ai/models.ts) — the exact moment Groq itself said the
+    // budget would refill. The token-sum ledger alone under-counts a
+    // day-scope exhaustion that predates this column's own tracking (e.g.
+    // usage from before this feature shipped), so the pre-flight check
+    // also honors whichever of these two signals is more restrictive.
+    //
+    // withTimezone: true (TIMESTAMPTZ) deliberately, unlike every other
+    // timestamp in this schema — every other one is written via
+    // .defaultNow() (Postgres's own now(), self-consistent within Postgres
+    // regardless of session timezone). This one is written from a JS Date
+    // computed in application code; a bare `timestamp` column silently
+    // mis-stored that (confirmed live: a Date meaning ~18:01 UTC came back
+    // reading as 12:21) since there's no unambiguous instant without a
+    // timezone attached to interpret it against.
+    rateLimitResetAt: timestamp("rate_limit_reset_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
@@ -462,6 +509,13 @@ export const trendReads = pgTable(
     // Powers the library's "your Currents reads" listing — the cache index
     // above is keyed by scope, not by who asked for it.
     index("trend_reads_user_created_idx").on(t.userId, t.createdAt),
+    // Powers the budget ledger's global "sum every user's tokens over the
+    // last 24h" query — no userId in the query, so it's not the leading
+    // column here (see remainingDailyTokenBudget in pipeline.ts).
+    index("trend_reads_created_tokens_idx").on(t.createdAt, t.tokensUsed),
+    // Powers the budget ledger's "is there a still-future Groq-reported
+    // reset time" lookup.
+    index("trend_reads_reset_idx").on(t.rateLimitResetAt),
   ],
 );
 
@@ -528,6 +582,74 @@ export const rightsAnswers = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("rights_answers_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Route — brief to ordered plan, with a conversation on top of it
+// ---------------------------------------------------------------------------
+
+/**
+ * One Route session: a client brief plus what the designer actually had,
+ * and the plan produced from it.
+ *
+ * Deliberately NOT the `projects` table above — that models a durable
+ * client/project record (and is currently unwritten by anything); this is a
+ * per-query result with its own job columns, the same split as
+ * trendReads/trends and toolAnswers/toolKnowledge.
+ */
+export const routePlans = pgTable(
+  "route_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    brief: text("brief").notNull(),
+    deadline: text("deadline"), // free text — "3 weeks", "by Friday"
+    // A SNAPSHOT of designerProfiles at run time, not a live join: the plan
+    // was built against what the designer had on the day they asked, and
+    // editing the profile later must not silently rewrite the premise an
+    // old plan was reasoned from.
+    tools: text("tools").array(),
+    skillLevel: text("skill_level"),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    stage: text("stage"), // "reading" | "planning"
+    result: jsonb("result"), // RoutePlan — revision 0
+    model: text("model"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("route_plans_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+/**
+ * The conversation on a plan — the first multi-turn exchange in this app.
+ *
+ * The designer's question and the assistant's reply are SEPARATE rows so a
+ * failed reply never takes the question down with it, and so the whole
+ * transcript reads in one ordered index scan.
+ */
+export const routeTurns = pgTable(
+  "route_turns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => routePlans.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // "user" | "assistant"
+    content: text("content"),
+    // Set ONLY when this assistant turn actually corrected the plan — an
+    // ordinary clarifying question leaves it null. The newest non-null one
+    // IS the current plan, the same "chain, newest wins" idea as
+    // rebuildVersions above, without needing a third table for revisions.
+    revisedPlan: jsonb("revised_plan"),
+    changeSummary: text("change_summary"),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    stage: text("stage"), // "thinking"
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("route_turns_plan_created_idx").on(t.planId, t.createdAt)],
 );
 
 // ---------------------------------------------------------------------------

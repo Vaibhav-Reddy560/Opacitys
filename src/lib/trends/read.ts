@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
-import { generateResearched, generateJson, MODELS, type ResearchSource } from "@/lib/ai/models";
+import { generateGrounded, generateJson, MODELS, type ResearchSource } from "@/lib/ai/models";
+import { tavilySearch } from "./tavily";
 
 /**
  * Normalizes a designer's scope string into a stable cache key component —
@@ -94,30 +95,38 @@ function windowLabel(months: number): string {
   return `the last ${months} months`;
 }
 
+/** "Sustainable packaging design" -> as-is; "Nike" -> "Nike design trends 2026" — avoids "design design" when the scope already says it. */
+function buildSearchQuery(scope: string, year: number): string {
+  const hasDesignWord = /\bdesign\b/i.test(scope);
+  return hasDesignWord ? `${scope} trends ${year}` : `${scope} design trends ${year}`;
+}
+
 /**
- * Pass 1: search the live web and write up what's moving, in prose.
+ * Pass 1: search the live web (via Tavily, see tavily.ts), then write up
+ * what's moving, in prose, from ONLY those results. Pass 2 (structureTrends
+ * below) turns the digest into the real schema afterward — kept as a
+ * separate step so pass 1's real work (the search + digest) survives and
+ * gets persisted even if pass 2 fails, not because of any provider
+ * constraint on combining tools with JSON mode (the previous
+ * `browser_search`-based version had that constraint; a plain search API
+ * called from application code does not).
  *
- * `browser_search` cannot be combined with JSON mode (confirmed live: Groq
- * 400s with "json mode cannot be combined with tool/function calling"), so
- * this pass is deliberately unstructured — pass 2 (structureTrends below)
- * turns the digest into the real schema afterward.
- *
- * Two hard constraints, both from measurements against this exact call:
- *   - Recency: without a stated cutoff the model drifted to 2024 sources
- *     even when asked about "now." Today's date and the cutoff date are
- *     stated explicitly, and every search query is required to carry a year.
- *   - Budget: one unconstrained run cost ~199.5k of Groq's 200k token/day
- *     free-tier cap (8 searches, 15 page opens, 24 tool turns). The caps
- *     below are a SOFT ask, not a hard limit — browser_search runs entirely
- *     inside Groq's own turn, so the SDK has no `stopWhen`/`maxSteps` hook
- *     into it. `maxOutputTokens` only bounds the reply, not the browsing.
+ * This replaced a Groq-`browser_search`-based version after a real,
+ * measured failure: browser_search runs entirely inside one opaque Groq
+ * turn with no `stopWhen`/`maxSteps` hook, and a single call burned 222,941
+ * tokens — more than an entire day's 200k free-tier cap — despite the
+ * system prompt asking for "at most 2 searches, 2 opens." Doing search in
+ * app code (tavilySearch, capped at maxResults) and feeding a
+ * LENGTH-BOUNDED block of real results into a plain (non-tool-calling) text
+ * call makes both the search cost and the token cost real, enforced caps
+ * instead of a request the model could ignore.
  */
 async function researchScope(params: {
   scope: string;
   kind: TrendKind | null;
   windowMonths: number;
   today: Date;
-}): Promise<{ digest: string; sources: ResearchSource[] }> {
+}): Promise<{ digest: string; sources: ResearchSource[]; tokensUsed: number }> {
   const cutoff = new Date(params.today);
   cutoff.setMonth(cutoff.getMonth() - params.windowMonths);
   const todayStr = params.today.toISOString().slice(0, 10);
@@ -127,15 +136,33 @@ async function researchScope(params: {
     ? `Treat the scope as ${KIND_HINT[params.kind]}.`
     : "Infer from the scope itself whether it's a category, a platform, or a brand.";
 
+  const MAX_RESULTS = 8;
+  const CONTENT_CHARS = 900; // per result, a hard cap on how much of Tavily's snippet feeds the prompt
+  const results = await tavilySearch({
+    query: buildSearchQuery(params.scope, params.today.getFullYear()),
+    maxResults: MAX_RESULTS,
+    // Tavily has no "N months" option; "year" is a coarse recency bias for
+    // the widest window, with the exact cutoff below doing the real
+    // filtering either way.
+    timeRange: params.windowMonths >= 12 ? "year" : undefined,
+  });
+
+  if (results.length === 0) {
+    throw new Error(`No recent web results found for "${params.scope}" — try a broader or different scope.`);
+  }
+
+  const sources: ResearchSource[] = results.map((r) => ({ title: r.title, url: r.url }));
+  const sourceBlock = results
+    .map((r, i) => `${i + 1}. ${r.title} — ${r.url}\n${r.content.slice(0, CONTENT_CHARS)}`)
+    .join("\n\n");
+
   const system = `You research what is CURRENTLY moving in graphic design, for a working designer.
 
-Today's date is ${todayStr}. Only use sources published on or after ${cutoffStr} (${windowLabel(params.windowMonths)}). Put the year in every search query you run. If you open a page and it's older than the cutoff, do not cite it and do not base a claim on it.
-
-Keep research tight — this runs on a metered free tier. Aim for at most 3 searches and at most 4 page opens. Prefer what a search result's own title and snippet already tell you; only open a page when a specific claim genuinely needs the full text.
+Today's date is ${todayStr}. Only base claims on results below published on or after ${cutoffStr} (${windowLabel(params.windowMonths)}) — if a result reads as older than that, ignore it rather than citing it.
 
 ${kindLine}
 
-Find 3-5 distinct, NAMED currents (not one broad "trend" — specific enough that two people would recognize the same thing from the name). If recent sources are thin, say so plainly and report fewer currents rather than padding with older material.
+Find 3-5 distinct, NAMED currents (not one broad "trend" — specific enough that two people would recognize the same thing from the name). If the results are thin, say so plainly and report fewer currents rather than padding with older material.
 
 For each current, cover:
 - What it looks like, concretely — not a mood, actual visual/structural traits
@@ -143,25 +170,24 @@ For each current, cover:
 - Why it's catching on now
 - How a designer would actually execute it
 
-Every claim should trace back to a page you searched or opened.`;
+Base every claim ONLY on the search results below — do not use outside knowledge, and do not cite a source that isn't in this list.`;
 
-  const { text, sources, usage } = await generateResearched({
-    model: MODELS.reasoning, // openai/gpt-oss-120b — the only reasoning-tier model with browser_search
+  const { text, usage } = await generateGrounded({
+    model: MODELS.reasoning,
     system,
     messages: [
       {
         role: "user",
-        content: `Scope: ${params.scope}\nWindow: ${windowLabel(params.windowMonths)} (since ${cutoffStr})`,
+        content: `Scope: ${params.scope}\nWindow: ${windowLabel(params.windowMonths)} (since ${cutoffStr})\n\nSearch results:\n${sourceBlock}`,
       },
     ],
-    maxOutputTokens: 3000,
+    maxOutputTokens: 2000,
   });
 
-  // Cheap breadcrumb for judging whether the soft caps above are holding in
-  // practice — not asserted on, just visible in server logs.
-  console.log(`[trends] research pass: ${usage.totalTokens ?? "?"} tokens, ${sources.length} sources`);
+  const tokensUsed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+  console.log(`[trends] research pass: ${tokensUsed || "?"} tokens, ${sources.length} sources (Tavily)`);
 
-  return { digest: text, sources };
+  return { digest: text, sources, tokensUsed };
 }
 
 // ---------------------------------------------------------------------------
@@ -200,15 +226,18 @@ function formatSourceList(sources: ResearchSource[]): string {
  * provider-enforced pattern src/lib/originality/read.ts already uses
  * successfully for a similarly-shaped nested result. This does concentrate
  * both passes on gpt-oss-120b's daily budget rather than spreading across
- * two models, but pass 1's browsing already dominates that budget by an
- * order of magnitude (measured 85k-190k tokens vs. pass 2's low thousands),
- * so the added cost is marginal against the reliability gained.
+ * two models — but since researchScope moved off Groq's `browser_search`
+ * to Tavily (see that function's doc comment), pass 1's own token cost is
+ * now bounded and small (capped input from 8 length-truncated search
+ * results, capped output), not the 85k-222k+ it could reach under the old
+ * browser_search-based version, so the shared-model concentration is no
+ * longer the dominant cost concern it once was.
  */
 async function structureDigest(params: {
   digest: string;
   sources: ResearchSource[];
-}): Promise<TrendRead> {
-  const { data } = await generateJson({
+}): Promise<{ result: TrendRead; tokensUsed: number }> {
+  const { data, usage } = await generateJson({
     model: MODELS.reasoning,
     schema: trendReadSchema,
     schemaName: "trend_read",
@@ -225,7 +254,7 @@ async function structureDigest(params: {
       },
     ],
   });
-  return data;
+  return { result: data, tokensUsed: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) };
 }
 
 /**
@@ -244,14 +273,14 @@ export async function researchTrends(params: {
   kind: TrendKind | null;
   windowMonths: number;
   today?: Date;
-}): Promise<{ digest: string; sources: ResearchSource[] }> {
+}): Promise<{ digest: string; sources: ResearchSource[]; tokensUsed: number }> {
   return researchScope({ ...params, today: params.today ?? new Date() });
 }
 
 export async function structureTrends(params: {
   digest: string;
   sources: ResearchSource[];
-}): Promise<TrendRead> {
-  const structured = await structureDigest(params);
-  return validateCitations(structured, params.sources);
+}): Promise<{ result: TrendRead; tokensUsed: number }> {
+  const { result, tokensUsed } = await structureDigest(params);
+  return { result: validateCitations(result, params.sources), tokensUsed };
 }

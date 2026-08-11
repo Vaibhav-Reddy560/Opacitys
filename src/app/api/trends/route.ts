@@ -4,7 +4,8 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { cacheKeyFor, type TrendKind } from "@/lib/trends/read";
-import { runTrendRead } from "@/lib/trends/pipeline";
+import { runTrendRead, checkBudget, describeBudget, hasBudgetForRun, secondsUntilAvailable } from "@/lib/trends/pipeline";
+import { hasTavilyKey } from "@/lib/trends/tavily";
 
 export const runtime = "nodejs";
 // Same reasoning as /api/analyze: after() is bounded by this route's own
@@ -31,15 +32,20 @@ const CACHE_TTL_DAYS = 7;
 //
 // The cache lookup is global (not scoped to the requesting user): a Currents
 // read isn't private information, and reusing any recent read for the same
-// scope is what keeps this affordable against Groq's free-tier daily token
-// cap (measured live: one unconstrained research pass alone can consume the
-// entire day's allowance).
+// scope avoids spending Tavily's free-tier credits (1,000/month, shared
+// across every user of this app) and Groq tokens on work already done.
 export async function POST(req: Request) {
   const { session, error } = await requireUser();
   if (error) return error;
   if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
       { error: "GROQ_API_KEY is not set — add it to .env.local to use Currents." },
+      { status: 503 },
+    );
+  }
+  if (!hasTavilyKey()) {
+    return NextResponse.json(
+      { error: "TAVILY_API_KEY is not set — add it to .env.local to use Currents." },
       { status: 503 },
     );
   }
@@ -71,6 +77,17 @@ export async function POST(req: Request) {
     if (cached) {
       return NextResponse.json({ id: cached.id, cached: true });
     }
+  }
+
+  // A real, local, synchronous check — not a Groq call — so a run that's
+  // already known to blow the shared daily budget never gets queued at all,
+  // instead of failing 30-70s later after actually spending toward it.
+  const budget = await checkBudget();
+  if (!hasBudgetForRun(budget)) {
+    return NextResponse.json(
+      { error: describeBudget(budget) },
+      { status: 429, headers: { "Retry-After": String(secondsUntilAvailable(budget)) } },
+    );
   }
 
   const [row] = await db

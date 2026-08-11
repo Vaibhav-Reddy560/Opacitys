@@ -13,7 +13,7 @@ import { db, schema } from "@/lib/db";
 // and identify are asset-bound (no standalone table of their own; ownership
 // only exists via analyses.assetId -> assets.userId) and are surfaced
 // through listAssets/getAsset's ranKinds instead of through listWork.
-export type WorkKind = "originality" | "trends" | "tools" | "rights";
+export type WorkKind = "originality" | "trends" | "tools" | "rights" | "workflow";
 
 export interface AssetSummary {
   id: string;
@@ -23,6 +23,15 @@ export interface AssetSummary {
   width: number | null;
   height: number | null;
   createdAt: Date;
+  /** Browser Geolocation fix at upload time — null for anything uploaded
+   *  before this shipped, or where the toggle was off/denied. Never both
+   *  set without the other; the map treats "has latitude" as "is located". */
+  latitude: number | null;
+  longitude: number | null;
+  locationAccuracy: number | null;
+  /** Reverse-geocoded "Bengaluru, India" — cosmetic, filled in shortly
+   *  after upload; can stay null even on a located asset if that lookup failed. */
+  placeLabel: string | null;
   /** Which features have a completed result on this exact image, for the chip row. */
   ranKinds: ("critique" | "identify" | "rebuild" | "originality")[];
 }
@@ -41,6 +50,10 @@ export async function listAssets(userId: string, limit = 60): Promise<AssetSumma
       width: schema.assets.width,
       height: schema.assets.height,
       createdAt: schema.assets.createdAt,
+      latitude: schema.assets.latitude,
+      longitude: schema.assets.longitude,
+      locationAccuracy: schema.assets.locationAccuracy,
+      placeLabel: schema.assets.placeLabel,
     })
     .from(schema.assets)
     .where(eq(schema.assets.userId, userId))
@@ -94,6 +107,10 @@ export async function getAsset(userId: string, assetId: string): Promise<AssetWi
       width: schema.assets.width,
       height: schema.assets.height,
       createdAt: schema.assets.createdAt,
+      latitude: schema.assets.latitude,
+      longitude: schema.assets.longitude,
+      locationAccuracy: schema.assets.locationAccuracy,
+      placeLabel: schema.assets.placeLabel,
       userId: schema.assets.userId,
     })
     .from(schema.assets)
@@ -127,6 +144,10 @@ export async function getAsset(userId: string, assetId: string): Promise<AssetWi
     width: asset.width,
     height: asset.height,
     createdAt: asset.createdAt,
+    latitude: asset.latitude,
+    longitude: asset.longitude,
+    locationAccuracy: asset.locationAccuracy,
+    placeLabel: asset.placeLabel,
     ranKinds: [
       ...(critiqueAnalysisId ? (["critique"] as const) : []),
       ...(identifyAnalysisId ? (["identify"] as const) : []),
@@ -227,6 +248,17 @@ export async function listWork(userId: string, kind?: WorkKind, limit = 20): Pro
         .then((rows) => rows.map((r) => ({ ...r, kind: "originality" as const }))),
     );
   }
+  if (!kind || kind === "workflow") {
+    queries.push(
+      db
+        .select({ id: schema.routePlans.id, title: schema.routePlans.brief, createdAt: schema.routePlans.createdAt })
+        .from(schema.routePlans)
+        .where(and(eq(schema.routePlans.userId, userId), eq(schema.routePlans.status, "complete")))
+        .orderBy(desc(schema.routePlans.createdAt))
+        .limit(limit)
+        .then((rows) => rows.map((r) => ({ ...r, kind: "workflow" as const }))),
+    );
+  }
 
   const results = (await Promise.all(queries)).flat();
   results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -263,6 +295,9 @@ const WORK_TABLES = {
   tools: schema.toolAnswers,
   rights: schema.rightsAnswers,
   originality: schema.originalityChecks,
+  // Deleting a plan cascades to its route_turns via the FK — no separate
+  // cleanup needed here, same as rebuild_versions -> layers.
+  workflow: schema.routePlans,
 } as const;
 
 /** Deletes one text-only work item after checking ownership. */
