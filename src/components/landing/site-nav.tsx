@@ -12,8 +12,10 @@ export function SiteNav() {
       )}
     >
       <nav className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-4 sm:px-8">
-        <Link href="/" aria-label="Opacitys home" className="shrink-0">
-          <TitleImage width={403} height={60} className="h-[26px] w-auto pt-1" />
+        {/* TitleImage at a fixed 26px display height — same call as the
+            footer's, so the mark is identically sized in both places. */}
+        <Link href="/" aria-label="Opacitys home" className="h-[26px] shrink-0">
+          <TitleImage width={1200} height={179} className="h-[26px] w-auto" size="compact" />
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-5">

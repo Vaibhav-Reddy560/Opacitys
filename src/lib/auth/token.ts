@@ -18,6 +18,16 @@ export interface SessionPayload {
   kind: SessionKind;
   /** Unix seconds. */
   exp: number;
+  // Carried in the cookie so pages that just need to *display* the account
+  // (the studio sidebar footer) never have to query `users` for it — that
+  // was a DB round trip on every single studio navigation for three columns
+  // that are already sitting right here, verified, from the Firebase token
+  // at sign-in. Can lag reality until the next sign-in (cookie lives 7
+  // days) if the user changes their Google name/photo mid-session — fine
+  // for a footer avatar, not something anything authorizes off of.
+  name: string | null;
+  email: string;
+  image: string | null;
 }
 
 export const SESSION_COOKIE = "opacitys_session";
@@ -79,6 +89,11 @@ export function verifyToken(token: string | undefined | null): SessionPayload | 
     if (typeof payload.exp !== "number" || payload.exp < Math.floor(Date.now() / 1000)) {
       return null;
     }
+    // A cookie signed before this field set shipped is still validly signed
+    // (same secret, same userId/kind/exp) but predates name/email/image —
+    // reject it so the caller re-authenticates instead of rendering with
+    // `undefined` where a string was promised.
+    if (typeof payload.email !== "string") return null;
     return payload;
   } catch {
     return null;

@@ -64,8 +64,15 @@ export function StudioSidebar({ user, hasSession }: { user: SidebarUser | null; 
     <>
       {/* Mobile bar */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/[0.07] bg-background/85 px-4 py-3 backdrop-blur-md lg:hidden">
-        <Link href="/studio" className="shrink-0">
-          <TitleImage width={403} height={60} className="h-6 w-auto mt-1" />
+        <Link href="/studio" className="h-6 shrink-0 mt-1">
+          {/* Explicit width AND height (both fixed, precomputed from the
+              file's true 2400:357 ratio — sharp-verified), not h-6/w-auto.
+              Auto-sizing depends on the browser resolving aspect ratio from
+              the <img>'s width/height ATTRIBUTES correctly in whatever flex
+              context it's rendered in; pinning both dimensions removes that
+              dependency entirely; no ambiguity left for any parent's
+              flex/stretch behavior to interact with. */}
+          <TitleImage width={1200} height={179} className="h-6 w-[161px]" size="compact" />
         </Link>
         <button
           type="button"
@@ -84,12 +91,22 @@ export function StudioSidebar({ user, hasSession }: { user: SidebarUser | null; 
         )}
       >
         <div className="flex h-full flex-col p-4">
-          {/* w-[88%] + h-auto scales the wordmark down proportionally — the
-              width/height props carry the PNG's true 6.72:1 ratio, so height
-              follows width instead of being pinned independently (pinning one
-              axis is what squashed this image in an earlier pass). */}
-          <Link href="/studio" className="mb-7 hidden px-2 pt-6 lg:block">
-            <TitleImage width={591} height={88} className="w-[88%] h-auto" priority />
+          {/* self-start: this div is `flex flex-col` with no items- override,
+              so default align-items:stretch force-stretches every direct
+              child to the column's full width — wanted for the nav rows
+              below (their hover background needs to span full width), wrong
+              here.
+              Width AND height both explicit (precomputed from the file's
+              true 2400:357 ratio), not h-8/w-auto — removes any dependency
+              on the browser's own aspect-ratio-from-attributes auto-sizing.
+              188px, not the ratio-correct value for h-8 (215px), because 215
+              doesn't fit: this aside is a fixed 248px, minus p-4 (16px/side)
+              on the column and px-2 (8px/side) on this Link leaves 200px of
+              actual available width, and 215 > 200 would overflow — same
+              failure mode as before, just moved from "wrong ratio" to
+              "right ratio, wrong box." 188 clears it with 12px to spare. */}
+          <Link href="/studio" className="mb-12 hidden h-[28px] self-start px-2 pt-6 lg:block">
+            <TitleImage width={1200} height={179} className="h-[28px] w-[188px]" size="compact" />
           </Link>
 
           <Link

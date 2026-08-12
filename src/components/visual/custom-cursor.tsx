@@ -119,10 +119,28 @@ export function CustomCursor() {
     window.addEventListener("pointerdown", onDown);
     window.addEventListener("pointerup", onUp);
 
+    // Only touch the DOM when something actually changed. The loop still
+    // runs every frame (it's the cheapest way to coalesce a burst of
+    // pointermove events into one write), but an unconditional style write
+    // per frame dirties this layer forever — and this particular layer is
+    // expensive to repaint: an SVG specular/dispersion filter plus a
+    // blurred, spinning conic gradient. Skipping the write when the pointer
+    // is still lets the compositor leave it alone entirely.
+    let lastX = NaN;
+    let lastY = NaN;
+    let lastVisible: boolean | null = null;
+
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      host.style.opacity = visible ? "1" : "0";
-      host.style.transform = `translate(${x}px, ${y}px)`;
+      if (visible !== lastVisible) {
+        lastVisible = visible;
+        host.style.opacity = visible ? "1" : "0";
+      }
+      if (x !== lastX || y !== lastY) {
+        lastX = x;
+        lastY = y;
+        host.style.transform = `translate(${x}px, ${y}px)`;
+      }
     };
     raf = requestAnimationFrame(tick);
 

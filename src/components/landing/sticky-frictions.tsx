@@ -39,7 +39,7 @@ export function StickyFrictions() {
             {PROBLEM.body}
           </p>
 
-          <ol className="mt-9 hidden lg:block">
+          <ol className="mt-9 hidden md:block">
             {PROBLEM.frictions.map((f, i) => {
               const accent = SPECTRUM[DIMENSION_ORDER[i]].color;
               const on = i === active;

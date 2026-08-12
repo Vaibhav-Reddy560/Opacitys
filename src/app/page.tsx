@@ -1,21 +1,30 @@
-"use client";
-
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { TitleImage } from "@/components/brand/title-image";
 import { Reveal } from "@/components/motion/reveal";
-import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { Parallax } from "@/components/motion/parallax";
 import { SpectrumRule } from "@/components/brand/spectrum-rule";
 import { LandingCta } from "@/components/landing/landing-cta";
-import { FeatureExplorer } from "@/components/landing/feature-explorer";
-import { StickyFrictions } from "@/components/landing/sticky-frictions";
 import { SiteNav } from "@/components/landing/site-nav";
+import { SectionHeader } from "@/components/landing/section-header";
+import { Section } from "@/components/landing/section";
 import { ScrollProgress } from "@/components/landing/scroll-progress";
-import { PrismaticAurora } from "@/components/visual/prismatic-aurora";
-import { DimensionMarquee } from "@/components/landing/dimension-marquee";
-import { OpacityReveal } from "@/components/landing/opacity-reveal";
-import { SpectrumSplit } from "@/components/landing/spectrum-split";
+import { PrismaticBackdrop } from "@/components/visual/prismatic-backdrop";
+import { SpectralScale } from "@/components/landing/spectral-scale";
 import { HERO, OPACITY_STAGES, CLOSE } from "@/lib/copy";
+
+// No "use client" here — every one of these sections already declares its
+// own (motion/scroll/drag effects all need a browser either way), so this
+// file staying a Server Component doesn't change what runs on the client,
+// only how it's bundled: the sections below the first scroll — heavier,
+// motion-driven, and not needed for the hero to paint or become
+// interactive — get their own lazy-loaded chunks instead of being merged
+// into one monolithic client bundle with the hero. Still server-rendered
+// (no `ssr: false`) — real content on first response, not a loading flash.
+const OpacityReveal = dynamic(() => import("@/components/landing/opacity-reveal").then((m) => m.OpacityReveal));
+const StickyFrictions = dynamic(() => import("@/components/landing/sticky-frictions").then((m) => m.StickyFrictions));
+const SpectrumSplit = dynamic(() => import("@/components/landing/spectrum-split").then((m) => m.SpectrumSplit));
+const FeatureExplorer = dynamic(() => import("@/components/landing/feature-explorer").then((m) => m.FeatureExplorer));
 
 export default function Home() {
   return (
@@ -25,153 +34,117 @@ export default function Home() {
 
       <main className="relative">
         {/* ------------------------------------------------------------- */}
-        {/* Hero                                                          */}
+        {/* Hero + belt — one min-h-svh unit, on purpose. Two things asked   */}
+        {/* for in the same breath read as contradictory but aren't: the    */}
+        {/* belt must be visible with zero scrolling, and nothing past it   */}
+        {/* (the "how" section) should be — i.e. it should behave like a    */}
+        {/* normal fold, not have the next section's heading peeking in.    */}
+        {/* Putting hero and belt inside one `min-h-svh` flex column        */}
+        {/* guarantees both at once, on any viewport: this block always     */}
+        {/* fills at least the full screen height, the belt sits at its own */}
+        {/* natural size at the bottom of it, and the hero content (flex-1) */}
+        {/* centers in whatever space is left above the belt. Previously    */}
+        {/* the belt lived in normal flow *after* a fixed-height hero — on  */}
+        {/* short viewports the hero alone consumed the screen and pushed   */}
+        {/* the belt below the fold; on short *content* (this hero) with no */}
+        {/* min-height at all, the next section's own top padding started   */}
+        {/* peeking through instead. Neither is this: the fold is always    */}
+        {/* exactly "hero + belt," full stop.                               */}
         {/* ------------------------------------------------------------- */}
-        <section
-          className="relative isolate flex flex-col items-center justify-center overflow-hidden px-6"
-          style={{ minHeight: "min(100svh, 840px)" }}
-        >
-          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10"
-            style={{
-              background: [
-                "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
-                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
-              ].join(", "),
-            }}
-          />
+        <div className="relative flex min-h-svh flex-col">
+          <section className="relative isolate flex flex-1 flex-col items-center justify-center overflow-hidden px-6 pt-16 pb-10">
+            {/* Slightly dimmer than the component's own default (1), and with
+                deepFade so the rays recede into the dark well before the
+                bottom of the section instead of staying near-full-strength
+                past the fold — this section only, per the close section
+                keeping the standard falloff. */}
+            <PrismaticBackdrop intensity={0.9} deepFade />
 
-          <div className="relative flex w-full max-w-5xl flex-col items-center text-center">
-            <Reveal delay={0.05}>
-              <TitleImage
-                width={1200}
-                height={179}
-                className="w-full max-w-[290px] sm:max-w-md md:max-w-2xl lg:max-w-3xl h-auto"
-                size="hero"
-                priority
-              />
-            </Reveal>
+            <div className="relative flex w-full max-w-5xl flex-col items-center text-center">
+              {/* The light source sits just above the top edge, so the wordmark
+                  is the first thing the beam lands on — the mark is *in* the
+                  dispersion, not sitting on a backdrop behind it. */}
+              <Reveal delay={0.05}>
+                <TitleImage
+                  width={1200}
+                  height={179}
+                  className="w-full max-w-[280px] sm:max-w-md md:max-w-xl lg:max-w-2xl h-auto"
+                  size="hero"
+                  priority
+                />
+              </Reveal>
 
-            <Reveal delay={0.2}>
-              <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-md">
-                <span
-                  className="whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-foreground/65 sm:text-[11px] sm:tracking-[0.2em]"
-                  aria-label={HERO.eyebrow}
-                >
-                  <span aria-hidden>
-                    Everything between{" "}
-                    <span
-                      className="text-foreground"
-                      style={{ fontVariationSettings: '"wght" 650' }}
-                    >
-                      Vision
-                    </span>{" "}
-                    and{" "}
-                    <span
-                      className="text-foreground"
-                      style={{ fontVariationSettings: '"wght" 650' }}
-                    >
-                      Design
+              {/* Moved to sit directly under the wordmark — light splitting
+                  out of the mark reads better than a rule floating between
+                  two blocks of text. */}
+              <Reveal delay={0.15} className="mt-5 w-full max-w-md">
+                <SpectrumRule />
+              </Reveal>
+
+              <Reveal delay={0.25}>
+                <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-md">
+                  <span
+                    className="whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-foreground/65 sm:text-[11px] sm:tracking-[0.2em]"
+                    aria-label={HERO.eyebrow}
+                  >
+                    <span aria-hidden>
+                      Everything between{" "}
+                      <span
+                        className="text-foreground"
+                        style={{ fontVariationSettings: '"wght" 650' }}
+                      >
+                        Vision
+                      </span>{" "}
+                      and{" "}
+                      <span
+                        className="text-foreground"
+                        style={{ fontVariationSettings: '"wght" 650' }}
+                      >
+                        Design
+                      </span>
                     </span>
                   </span>
-                </span>
-              </div>
-            </Reveal>
+                </div>
+              </Reveal>
 
-            <Reveal delay={0.3} className="mt-5 w-full max-w-xl">
-              <SpectrumRule />
-            </Reveal>
+              <Reveal delay={0.35}>
+                <p className="text-balance mt-6 max-w-md text-[14px] leading-relaxed text-foreground/68 sm:text-[15px]">
+                  {HERO.ledeShort}
+                </p>
+              </Reveal>
 
-            <Reveal delay={0.38}>
-              <p
-                className="text-balance mt-7 max-w-xl text-[14px] leading-relaxed text-foreground/68 sm:text-[15px]"
-                aria-label={HERO.lede}
-              >
-                <span aria-hidden>
-                  <span
-                    className="text-foreground/92"
-                    style={{ fontVariationSettings: '"wght" 560' }}
-                  >
-                    Opacitys
-                  </span>{" "}
-                  is a creative workspace that simplifies every stage of the graphic design
-                  process, from inspiration to execution. Everything you need to turn ideas
-                  into exceptional designs — all in one place.
-                </span>
-              </p>
-            </Reveal>
-
-            <Reveal delay={0.46}>
-              <div className="mt-9">
-                <LandingCta />
-              </div>
-            </Reveal>
-          </div>
-
-          {/* Hidden below ~760px of real viewport height: on a shorter window
-              (13" laptop, extra browser toolbars) there isn't clearance
-              between the CTA row and the viewport edge, and this collided
-              with the second button — confirmed by measuring both rects,
-              not just eyeballing a screenshot. It's a hint, not content, so
-              hiding it is the right trade rather than cramming the hero. */}
-          <Reveal delay={0.6}>
-            <div className="absolute bottom-9 left-1/2 hidden -translate-x-1/2 [@media(min-height:760px)]:block">
-              <div className="flex flex-col items-center gap-2.5">
-                <span className="text-[10px] uppercase tracking-[0.24em] text-foreground/50">
-                  Scroll
-                </span>
-                <span
-                  aria-hidden
-                  className="h-9 w-px"
-                  style={{
-                    background: "linear-gradient(to bottom, oklch(1 0 0 / 0.32), transparent)",
-                  }}
-                />
-              </div>
+              <Reveal delay={0.45}>
+                <div className="mt-10">
+                  <LandingCta />
+                </div>
+              </Reveal>
             </div>
-          </Reveal>
-        </section>
+          </section>
 
-        {/* Belt — a continuous reminder of the ten-dimension vocabulary */}
-        <div className="border-y border-white/[0.06] bg-white/[0.012] py-4">
-          <DimensionMarquee />
+          {/* Belt — the nine-dimension vocabulary, as a static instrument
+              scale rather than a scrolling marquee. Natural height, not
+              flex-1 — pinned at the bottom of the min-h-svh block above. */}
+          <div className="border-y border-white/[0.06] bg-white/[0.012] py-9">
+            <SpectralScale />
+          </div>
         </div>
 
         {/* ------------------------------------------------------------- */}
         {/* What the name means — the metaphor, made draggable             */}
         {/* ------------------------------------------------------------- */}
-        <section
-          id="how"
-          className="relative scroll-mt-20 overflow-hidden border-b border-white/[0.06] px-6 py-28 sm:py-36"
-        >
+        <Section id="how" width="wide" className="scroll-mt-20 overflow-hidden">
           <Parallax depth={0.22} className="pointer-events-none absolute -right-24 top-10 -z-10 size-[420px] rounded-full opacity-30 blur-[110px]" >
             <div className="size-full rounded-full" style={{ background: "oklch(0.62 0.2 265)" }} />
           </Parallax>
 
-          <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1fr_1fr]">
+          <div className="grid items-center gap-16 lg:grid-cols-[1fr_1fr]">
             <div>
-              <Reveal>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-foreground/52">
-                  What the name means
-                </p>
-              </Reveal>
-              <ScrollReveal
-                as="h2"
-                className="text-balance mt-5 block text-3xl leading-[1.14] tracking-tight sm:text-[2.6rem]"
-              >
-                <span style={{ fontVariationSettings: '"wght" 500' }}>
-                  Design is a slow rise from faint to fully there.
-                </span>
-              </ScrollReveal>
-              <Reveal delay={0.1}>
-                <p className="text-balance mt-4 max-w-md text-[15px] leading-relaxed text-foreground/62">
-                  Opacity is how visible something is. The work of designing is
-                  raising it — from a shape you can only half picture, to something
-                  every part of which you could defend out loud. Drag the handle.
-                </p>
-              </Reveal>
+              <SectionHeader
+                eyebrow="What the name means"
+                title="Design is a slow rise from faint to fully there."
+                lede="Opacity is how visible something is. The work of designing is raising it — from a shape you can only half picture, to something every part of which you could defend out loud. Drag the handle."
+                ledeClassName="max-w-md"
+              />
 
               <Reveal delay={0.2}>
                 <ul className="mt-9 space-y-4">
@@ -201,93 +174,53 @@ export default function Home() {
               <OpacityReveal />
             </Reveal>
           </div>
-        </section>
+        </Section>
 
         {/* ------------------------------------------------------------- */}
         {/* The frictions — pinned heading, scrolling problems             */}
         {/* ------------------------------------------------------------- */}
-        <section className="relative border-b border-white/[0.06] px-6 py-28 sm:py-36">
-          <div className="mx-auto max-w-6xl">
-            <StickyFrictions />
-          </div>
-        </section>
+        <Section width="wide">
+          <StickyFrictions />
+        </Section>
 
         {/* ------------------------------------------------------------- */}
         {/* The spectrum, explained                                       */}
         {/* ------------------------------------------------------------- */}
-        <section className="relative overflow-hidden border-b border-white/[0.06] px-6 py-28 sm:py-36">
-          <div className="mx-auto max-w-5xl">
-            <Reveal>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-foreground/52">
-                The spectrum
-              </p>
-              <ScrollReveal
-                as="h2"
-                className="text-balance mt-5 block max-w-2xl text-3xl leading-[1.14] tracking-tight sm:text-[2.6rem]"
-              >
-                <span style={{ fontVariationSettings: '"wght" 500' }}>
-                  One reading, split into ten.
-                </span>
-              </ScrollReveal>
-              <p className="text-balance mt-4 max-w-xl text-[15px] leading-relaxed text-foreground/62">
-                Scroll — the same way a prism does it.
-              </p>
-            </Reveal>
+        <Section id="spectrum" className="scroll-mt-20 overflow-hidden">
+          <SectionHeader
+            eyebrow="The spectrum"
+            title="One reading, split into nine."
+            lede="Scroll — the same way a prism does it."
+            titleClassName="max-w-2xl"
+            ledeClassName="max-w-xl"
+          />
 
-            <div className="mt-16">
-              <SpectrumSplit />
-            </div>
+          <div className="mt-16">
+            <SpectrumSplit />
           </div>
-        </section>
+        </Section>
 
         {/* ------------------------------------------------------------- */}
         {/* The ten features                                               */}
         {/* ------------------------------------------------------------- */}
-        <section
-          id="studio"
-          className="relative scroll-mt-20 border-b border-white/[0.06] px-6 py-28 sm:py-36"
-        >
-          <div className="mx-auto max-w-6xl">
-            <Reveal>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-foreground/52">
-                The studio
-              </p>
-              <ScrollReveal
-                as="h2"
-                className="text-balance mt-5 block max-w-2xl text-3xl leading-[1.14] tracking-tight sm:text-[2.6rem]"
-              >
-                <span style={{ fontVariationSettings: '"wght" 500' }}>
-                  Ten features, one job: raise the opacity.
-                </span>
-              </ScrollReveal>
-              <p className="text-balance mt-4 max-w-2xl text-[15px] leading-relaxed text-foreground/62">
-                Each one takes a different kind of faint thing and brings it up.
-                Some are ready now; the rest are labelled honestly, because a
-                roadmap dressed as a feature list is its own kind of vague brief.
-              </p>
-            </Reveal>
+        <Section id="studio" width="wide" className="scroll-mt-20">
+          <SectionHeader
+            eyebrow="The studio"
+            title="Ten features, one job: raise the opacity."
+            lede="Each one takes a different kind of faint thing and brings it up. Some are ready now; the rest are labelled honestly, because a roadmap dressed as a feature list is its own kind of vague brief."
+            titleClassName="max-w-2xl"
+            ledeClassName="max-w-2xl"
+          />
 
-            <div className="mt-14">
-              <FeatureExplorer />
-            </div>
+          <div className="mt-14">
+            <FeatureExplorer />
           </div>
-        </section>
+        </Section>
 
         {/* ------------------------------------------------------------- */}
         {/* Close                                                          */}
         {/* ------------------------------------------------------------- */}
-        <section className="relative isolate overflow-hidden px-6 py-32 sm:py-44">
-          <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10"
-            style={{
-              background: [
-                "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
-                "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
-              ].join(", "),
-            }}
-          />
+        <Section tone="prism" divider={false}>
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
             <Reveal>
               <h2
@@ -306,11 +239,15 @@ export default function Home() {
               </div>
             </Reveal>
           </div>
-        </section>
+        </Section>
 
         <footer className="border-t border-white/[0.06] px-5 py-10 sm:px-8">
           <div className="mx-auto flex max-w-[1680px] flex-col items-center justify-between gap-4 sm:flex-row">
-            <TitleImage width={403} height={60} className="h-[26px] w-auto" />
+            {/* Same TitleImage call as SiteNav, same display height, so the
+                mark is identically sized in both places. */}
+            <div className="h-[26px]">
+              <TitleImage width={1200} height={179} className="h-[26px] w-auto" size="compact" />
+            </div>
             <p className="text-xs text-foreground/50">
               Designed with designers in mind.
             </p>

@@ -106,7 +106,7 @@ export function StickyReveal({
           element rather than padding on the container — a sticky element is
           constrained by its containing block's *content* box, so trailing
           padding does not extend the range it can stick through. */}
-      <div className="space-y-14">
+      <div className="space-y-12">
         {steps.map((step, i) => (
           <StickyStep
             key={i}
@@ -118,7 +118,7 @@ export function StickyReveal({
             {step}
           </StickyStep>
         ))}
-        <div aria-hidden className="h-[14vh]" />
+        <div aria-hidden className="h-[10vh]" />
       </div>
     </div>
   );

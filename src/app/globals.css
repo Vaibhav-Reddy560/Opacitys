@@ -342,6 +342,50 @@
 */
 
 /*
+ * Referenced by PrismaticDispersion. Both caustic sets pivot about the light
+ * SOURCE, not the element centre — `transform-origin` is set to the origin
+ * point in the component — so the fan sways the way a beam does when the
+ * facet moves, instead of sliding sideways as a whole picture.
+ *
+ * The two periods (19s / 26s) are deliberately non-harmonic: where the sets
+ * cross, the interference pattern never repeats on a visible cycle. Rotation
+ * amounts are tiny by design — a couple of degrees is a large movement at the
+ * far end of a 116deg fan, and anything more reads as a spinning gradient
+ * rather than as light.
+ *
+ * Transform/opacity only: the conic textures rasterise once and are then
+ * composited, which is what makes this cheaper than the blur-driven
+ * background it replaced.
+ */
+@keyframes dispersion-sway-a {
+  0%,
+  100% {
+    transform: rotate(-1.1deg);
+  }
+  50% {
+    transform: rotate(1.1deg);
+  }
+}
+@keyframes dispersion-sway-b {
+  0%,
+  100% {
+    transform: rotate(1.6deg);
+  }
+  50% {
+    transform: rotate(-1.4deg);
+  }
+}
+@keyframes dispersion-breathe {
+  0%,
+  100% {
+    opacity: 0.62;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/*
  * Referenced by PrismaticAurora — see that component's doc comment for the
  * full rationale. Ring rotates continuously; the four blobs each drift on
  * an independent translate/scale/opacity path (different axes and
@@ -411,6 +455,23 @@
   50% {
     transform: translate(-5%, 7%) scale(1.05);
     opacity: 0.38;
+  }
+}
+
+/*
+ * Referenced by BorderTrace. The traced `<rect>` carries `pathLength="100"`,
+ * which makes the browser normalize its total outline to exactly 100 units
+ * regardless of the rect's actual rendered size — so `stroke-dasharray` and
+ * `stroke-dashoffset` here are percentages of the perimeter, not pixels, and
+ * stay correct as the card's height changes with its content. Animating
+ * dashoffset from 0 to -100 sweeps the dash exactly one full lap; negative
+ * so it travels the same direction the rect is drawn in (clockwise from the
+ * top-left: right along the top, down the right side, left along the
+ * bottom, up the left side).
+ */
+@keyframes border-trace-dash {
+  to {
+    stroke-dashoffset: -100;
   }
 }
 

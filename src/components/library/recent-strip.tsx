@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { readSession } from "@/lib/auth/session";
 import { listWork, listRecentAnalyses } from "@/lib/library/queries";
 import { RESULT_HREF as HREF, type AnyResultKind as RecentKind } from "@/lib/library/hrefs";
@@ -34,8 +35,16 @@ export async function RecentStrip({ kind, accent }: { kind: RecentKind; accent: 
               data-cursor-accent={accent}
               className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-white/[0.09] transition-colors hover:border-white/25"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- external Blob URL thumbnail, not an optimizable local asset */}
-              <img src={item.storageKey} alt="" className="size-full object-cover" />
+              {/* 64px slot (`size-16`) — fixed, so a literal `sizes` is
+                  exact. This strip renders on the feature pages, where it
+                  was previously pulling full-resolution uploads. */}
+              <Image
+                src={item.storageKey}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
             </Link>
           ))}
         </div>

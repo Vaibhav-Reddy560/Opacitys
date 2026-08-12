@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { LayoutGrid, MapIcon } from "lucide-react";
 import { DeleteButton } from "@/components/library/delete-button";
@@ -89,8 +90,18 @@ export function UploadsPanel({ assets }: { assets: AssetSummary[] }) {
               href={`/studio/library/${a.id}`}
               className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.09] transition-colors hover:border-white/25"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- external Blob URL thumbnail, not an optimizable local asset */}
-              <img src={a.storageKey} alt="" className="size-full object-cover" />
+              {/* `fill` + `sizes` so the optimizer serves roughly the tile's
+                  real width instead of the original upload, which is often
+                  20+ megapixels. `sizes` mirrors the grid's own breakpoints
+                  (3 / 4 / 5 columns) — get it wrong and Next silently ships
+                  a much larger file than the slot needs. */}
+              <Image
+                src={a.storageKey}
+                alt=""
+                fill
+                sizes="(min-width: 768px) 20vw, (min-width: 640px) 25vw, 33vw"
+                className="object-cover"
+              />
 
               {a.ranKinds.length > 0 && (
                 <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/75 to-transparent p-2 pt-5">

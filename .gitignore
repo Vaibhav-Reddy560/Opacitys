@@ -54,3 +54,10 @@ services/analyzer/__pycache__/
 
 # claude code (personal, machine-specific)
 .claude/settings.local.json
+
+# source art (originals kept out of the served /public tree — see the doc
+# comment in src/components/brand/title-image.tsx for what's derived from
+# what). Not served, not committed; keep the original file itself somewhere
+# durable (design tool / cloud storage) since this is a local-only backup.
+/assets/source/
+

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Compass, ScanEye, Aperture } from "lucide-react";
 import { readSession } from "@/lib/auth/session";
 import { getAsset } from "@/lib/library/queries";
@@ -42,10 +43,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ as
 
         <div className="mt-8 space-y-6">
           <PrismPanel accent={ACCENT} className="p-6 sm:p-7">
-            {/* eslint-disable-next-line @next/next/no-img-element -- external Blob URL, not an optimizable local asset */}
-            <img
+            {/* Capped at 420px tall by the class below, so there is no
+                reason to ship the original 20-megapixel upload here either.
+                width/height are the intrinsic dimensions Next needs for
+                its own aspect math; the classes still control layout. */}
+            <Image
               src={asset.storageKey}
               alt={asset.originalName ?? "Uploaded design"}
+              width={asset.width ?? 1200}
+              height={asset.height ?? 800}
+              sizes="(min-width: 768px) 768px, 100vw"
               className="max-h-[420px] w-full rounded-xl border border-white/[0.08] object-contain"
             />
             <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-[12px] text-foreground/52">

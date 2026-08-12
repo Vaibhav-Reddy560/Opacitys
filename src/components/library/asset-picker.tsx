@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ImagesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AssetSummary } from "@/lib/library/queries";
@@ -67,8 +68,15 @@ export function AssetPicker({
                 "hover:border-white/25 disabled:pointer-events-none disabled:opacity-50",
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- external Blob URL thumbnail, not an optimizable local asset */}
-              <img src={a.storageKey} alt="" className="size-full object-cover" />
+              {/* 64px slot, same as RecentStrip — this also sits on the
+                  feature pages, under each Dropzone. */}
+              <Image
+                src={a.storageKey}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
             </button>
           ))}
         </div>

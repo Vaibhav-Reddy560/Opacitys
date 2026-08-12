@@ -86,6 +86,6 @@ export async function POST(req: Request) {
     );
   }
 
-  await createSession(userId, "user");
+  await createSession(userId, "user", { name, email, image });
   return NextResponse.json({ ok: true });
 }

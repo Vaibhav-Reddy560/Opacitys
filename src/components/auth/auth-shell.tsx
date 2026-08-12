@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { PrismaticAurora } from "@/components/visual/prismatic-aurora";
+import { PrismaticBackdrop } from "@/components/visual/prismatic-backdrop";
 import { TitleImage } from "@/components/brand/title-image";
-import { PrismRule } from "@/components/brand/prism";
+import { PrismRule, PrismPanel } from "@/components/brand/prism";
+import { BorderTrace } from "@/components/motion/border-trace";
 
 export function AuthShell({
   title,
@@ -19,41 +20,39 @@ export function AuthShell({
 }) {
   return (
     <main className="relative isolate grid min-h-svh place-items-center overflow-hidden px-6 py-12">
-      <PrismaticAurora className="absolute inset-0 -z-20 h-full w-full" compact />
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          background: [
-            "radial-gradient(105% 62% at 50% 48%, oklch(0.145 0.012 265 / 0.72) 0%, oklch(0.145 0.012 265 / 0.4) 52%, transparent 82%)",
-            "linear-gradient(to bottom, oklch(0.145 0.012 265 / 0.35) 0%, oklch(0.145 0.012 265 / 0.1) 30%, oklch(0.145 0.012 265 / 0.1) 70%, oklch(0.145 0.012 265 / 0.55) 100%)",
-          ].join(", "),
-        }}
-      />
+      <PrismaticBackdrop intensity={0.8} />
 
-      <div className="w-full max-w-[380px]">
-        <div className="mb-9 text-center">
-          <Link href="/" className="inline-block">
-            <TitleImage width={591} height={88} className="h-8 sm:h-[52px] w-auto" size="hero" priority />
-          </Link>
-          <h1
-            className="mt-8 text-xl tracking-tight"
-            style={{ fontVariationSettings: '"wght" 550' }}
-          >
-            {title}
-          </h1>
-          <p className="text-pretty mx-auto mt-2 max-w-[300px] text-[13.5px] leading-relaxed text-foreground/58">
-            {lede}
-          </p>
+      <div className="w-full max-w-[460px]">
+        {/* relative so BorderTrace's absolute inset-0 SVG traces this box
+            exactly, not the outer max-w-[460px] wrapper. */}
+        <div className="relative">
+          <BorderTrace />
+          <PrismPanel className="p-9 sm:p-11">
+            <Link href="/" className="mb-7 flex justify-center">
+              <TitleImage width={591} height={88} className="h-7 sm:h-9 w-auto" size="hero" priority />
+            </Link>
+
+            <div className="text-center">
+              <h1
+                className="text-2xl tracking-tight sm:text-[28px]"
+                style={{ fontVariationSettings: '"wght" 550' }}
+              >
+                {title}
+              </h1>
+              <p className="text-pretty mx-auto mt-3 max-w-[360px] text-[15px] leading-relaxed text-foreground/58">
+                {lede}
+              </p>
+            </div>
+
+            <div className="my-8">
+              <PrismRule />
+            </div>
+
+            {children}
+          </PrismPanel>
         </div>
 
-        <div className="mb-8">
-          <PrismRule />
-        </div>
-
-        {children}
-
-        <div className="mt-7 text-center text-[13px] text-foreground/58">{footer}</div>
+        <div className="mt-7 text-center text-sm text-foreground/58">{footer}</div>
       </div>
     </main>
   );
