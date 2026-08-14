@@ -18,16 +18,9 @@ export const HERO = {
   // Rendered with "Vision" and "Design" picked out in spectral color —
   // page.tsx builds the JSX, this is the plain-text fallback (aria-label).
   eyebrow: "Everything between Vision and Design",
-  // "Opacitys" is picked out in page.tsx the same way.
+  // The hero paragraph, under the eyebrow pill.
   lede:
     "Opacitys is a creative workspace that simplifies every stage of the graphic design process, from inspiration to execution. Everything you need to turn ideas into exceptional designs — all in one place.",
-  // The hero is a single lit column — wordmark, rule, eyebrow, one line, CTA —
-  // sitting inside the dispersion. At that density the lede has to be one
-  // claim and then get out of the way; the full `lede` above is three lines
-  // and would fight the beam for the middle of the screen. `lede` is kept for
-  // where length is an asset rather than a cost (OG description, a future
-  // about section).
-  ledeShort: "Every flaw pinned to its exact spot, with a measured number instead of an adjective.",
   primaryCta: "Open the studio",
   secondaryCta: "See how it develops",
 } as const;

@@ -22,7 +22,7 @@
 
 <img src=".github/readme-assets/rule.png" alt="" width="100%" height="4" />
 
-Opacitys is a creative workspace that simplifies every stage of the graphic design process, from inspiration to execution. Ten measurement-grounded tools, one idea: take something faint and bring it up until it is fully there — every claim backed by a real number or a real source, never a guessed adjective.
+Opacitys is a creative workspace that simplifies every stage of the graphic design process, from inspiration to execution. Everything you need to turn ideas into exceptional designs — all in one place.
 
 ### Contents
 

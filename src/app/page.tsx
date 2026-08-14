@@ -108,8 +108,14 @@ export default function Home() {
               </Reveal>
 
               <Reveal delay={0.35}>
-                <p className="text-balance mt-6 max-w-md text-[14px] leading-relaxed text-foreground/68 sm:text-[15px]">
-                  {HERO.ledeShort}
+                <p className="text-balance mt-6 max-w-xl text-center text-[14px] leading-relaxed tracking-wide text-foreground/68 sm:text-[15px]">
+                  <span
+                    className="text-foreground"
+                    style={{ fontVariationSettings: '"wght" 550' }}
+                  >
+                    Opacitys
+                  </span>
+                  {HERO.lede.slice("Opacitys".length)}
                 </p>
               </Reveal>
 
