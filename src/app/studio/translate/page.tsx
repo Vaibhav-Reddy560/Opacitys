@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessagesSquare, Loader2, Send } from "lucide-react";
+import { MessagesSquare, ChevronDown, Loader2, Send } from "lucide-react";
 import { PageHeader } from "@/components/studio/page-header";
 import { PrismPanel } from "@/components/brand/prism";
 import { ChromeButton } from "@/components/ui/chrome-button";
@@ -186,18 +186,24 @@ export default function TranslatePage() {
               <label htmlFor="channel" className="block text-[11px] uppercase tracking-[0.2em] text-foreground/52">
                 Channel
               </label>
-              <select
-                id="channel"
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-white/[0.09] bg-black/25 px-3 py-2.5 text-[13px] text-foreground/90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
-              >
-                {CHANNELS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <div className="relative mt-2">
+                <select
+                  id="channel"
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-white/[0.09] bg-black/25 px-3 py-2.5 pr-9 text-[13px] text-foreground/90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
+                >
+                  {CHANNELS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-foreground/50"
+                  aria-hidden
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="iteration" className="block text-[11px] uppercase tracking-[0.2em] text-foreground/52">

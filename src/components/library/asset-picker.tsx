@@ -68,8 +68,7 @@ export function AssetPicker({
                 "hover:border-white/25 disabled:pointer-events-none disabled:opacity-50",
               )}
             >
-              {/* 64px slot, same as RecentStrip — this also sits on the
-                  feature pages, under each Dropzone. */}
+              {/* 64px slot — fixed, so a literal `sizes` is exact. */}
               <Image
                 src={a.storageKey}
                 alt=""

@@ -1,20 +1,15 @@
 import { LibraryBig } from "lucide-react";
 import { readSession } from "@/lib/auth/session";
 import { listAssets, listWork } from "@/lib/library/queries";
-import { RESULT_HREF, KIND_LABEL } from "@/lib/library/hrefs";
-import { PrismPanel, PrismIcon, PrismRule } from "@/components/brand/prism";
-import { UploadsPanel } from "@/components/library/uploads-panel";
-import { WorkRow } from "@/components/library/work-row";
+import { PrismIcon, PrismRule } from "@/components/brand/prism";
+import { LibraryContent } from "@/components/library/library-content";
 import { META_ACCENT } from "@/lib/critique/spectrum";
 
 const ACCENT = META_ACCENT;
 
-function formatDate(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
-// Server component — direct DB reads, no client fetch. Deletion is the only
-// interactive piece, handled by the small client DeleteButton islands below.
+// Server component — direct DB reads, no client fetch. Deletion and the
+// feature filter are the only interactive pieces, handled by client islands
+// (DeleteButton, LibraryContent) below.
 export default async function LibraryPage() {
   const session = await readSession();
   if (!session) return null; // proxy already gates /studio; this satisfies TS
@@ -47,35 +42,7 @@ export default async function LibraryPage() {
           </div>
         </header>
 
-        <PrismPanel accent={ACCENT} className="p-6 sm:p-7">
-          <UploadsPanel assets={assets} />
-        </PrismPanel>
-
-        <div className="mt-6">
-          <PrismPanel accent={ACCENT} className="p-6 sm:p-7">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">Reads ({work.length})</h2>
-
-            {work.length === 0 ? (
-              <p className="mt-4 text-[13px] text-foreground/55">
-                Nothing yet — Currents, Instruments, Clearance and Originality reads will show up here.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-white/[0.06]">
-                {work.map((item) => (
-                  <WorkRow
-                    key={`${item.kind}-${item.id}`}
-                    href={RESULT_HREF[item.kind](item.id)}
-                    badge={KIND_LABEL[item.kind]}
-                    title={item.title}
-                    date={formatDate(item.createdAt)}
-                    deleteUrl={`/api/library/work/${item.kind}/${item.id}`}
-                    deleteConfirm="Delete this read? This can't be undone."
-                  />
-                ))}
-              </ul>
-            )}
-          </PrismPanel>
-        </div>
+        <LibraryContent assets={assets} work={work} />
 
         <p className="mt-5 px-1 text-[11.5px] leading-relaxed text-foreground/45">
           Deleting an image removes every result run on it. Deleting a read removes only that read.

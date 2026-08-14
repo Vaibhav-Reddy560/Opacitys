@@ -2,7 +2,6 @@ import { Wrench } from "lucide-react";
 import { PageHeader } from "@/components/studio/page-header";
 import { PrismPanel } from "@/components/brand/prism";
 import { ToolsForm } from "@/components/tools/tools-form";
-import { RecentStrip } from "@/components/library/recent-strip";
 import { MODULES } from "@/lib/copy";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 
@@ -39,8 +38,6 @@ const COVERAGE = [
   },
 ];
 
-// Server shell — see the comment in studio/critique/page.tsx for why
-// RecentStrip has to be composed here rather than inside the client form.
 export default function ToolsPage() {
   return (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
@@ -48,7 +45,6 @@ export default function ToolsPage() {
         <PageHeader module={MODULE} icon={<Wrench className="size-4" aria-hidden />} />
 
         <ToolsForm />
-        <RecentStrip kind="tools" accent={SPECTRUM.balance.color} />
 
         <div className="mt-6">
           <PrismPanel accent={SPECTRUM.balance.color} className="p-6 sm:p-7">

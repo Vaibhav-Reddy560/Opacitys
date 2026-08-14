@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { PrismPanel } from "@/components/brand/prism";
 import { ChromeButton } from "@/components/ui/chrome-button";
 import { VoiceMicButton } from "@/components/voice/voice-mic-button";
@@ -68,18 +68,24 @@ export function RightsQaPanel() {
       <label htmlFor="rights-country" className="mt-5 block text-[11px] uppercase tracking-[0.2em] text-foreground/52">
         Country you&rsquo;re working from
       </label>
-      <select
-        id="rights-country"
-        value={country}
-        onChange={(e) => setCountry(e.target.value)}
-        className="mt-3 w-full rounded-xl border border-white/[0.09] bg-black/25 px-3.5 py-2.5 text-[13.5px] text-foreground/90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
-      >
-        {COUNTRIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
+      <div className="relative mt-3">
+        <select
+          id="rights-country"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="w-full appearance-none rounded-xl border border-white/[0.09] bg-black/25 px-3.5 py-2.5 pr-10 text-[13.5px] text-foreground/90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/15"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3.5 top-1/2 size-3.5 -translate-y-1/2 text-foreground/50"
+          aria-hidden
+        />
+      </div>
 
       <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
         <label htmlFor="rights-question" className="text-[11px] uppercase tracking-[0.2em] text-foreground/52">

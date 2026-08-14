@@ -2,7 +2,6 @@ import { Aperture } from "lucide-react";
 import { PageHeader } from "@/components/studio/page-header";
 import { PrismPanel } from "@/components/brand/prism";
 import { IdentifyForm } from "@/components/identify/identify-form";
-import { RecentStrip } from "@/components/library/recent-strip";
 import { MODULES } from "@/lib/copy";
 import { SPECTRUM } from "@/lib/critique/spectrum";
 import { STYLE_TAXONOMY } from "@/lib/identify/taxonomy";
@@ -10,8 +9,6 @@ import { STYLE_TAXONOMY } from "@/lib/identify/taxonomy";
 const MODULE = MODULES.find((m) => m.slug === "identify")!;
 const ACCENT = SPECTRUM.hierarchy.color;
 
-// Server shell — see the comment in studio/critique/page.tsx for why
-// RecentStrip has to be composed here rather than inside the client form.
 export default function IdentifyPage() {
   return (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
@@ -19,7 +16,6 @@ export default function IdentifyPage() {
         <PageHeader module={MODULE} icon={<Aperture className="size-4" aria-hidden />} />
 
         <IdentifyForm />
-        <RecentStrip kind="identify" accent={ACCENT} />
 
         <div className="mt-8">
           <PrismPanel accent={ACCENT} className="p-6 sm:p-7">

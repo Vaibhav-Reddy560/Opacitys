@@ -30,26 +30,34 @@ export function WorkRow({
   const needsToggle = title.length > EXPAND_THRESHOLD;
 
   return (
-    <li className="py-2.5">
+    <li className="py-3.5">
+      {/* Metadata row — badge and date+delete each get their own fixed
+          column, so a wider badge ("ORIGINALITY" vs "ROUTE") never shifts
+          where the title starts underneath it, the way a single shared row
+          used to. */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.06em] text-foreground/50">
-            {badge}
-          </span>
-          {expanded ? (
-            <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground/85">{title}</span>
-          ) : (
-            <span className="block min-w-0 flex-1 truncate text-[13px] text-foreground/75">{title}</span>
-          )}
-        </div>
-
+        <span
+          className="inline-flex w-24 shrink-0 justify-center rounded-full border border-white/15 px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.06em] text-foreground/72"
+          style={{ fontVariationSettings: '"wght" 600' }}
+        >
+          {badge}
+        </span>
         <div className="flex shrink-0 items-center gap-3">
           <span className="font-mono text-[10.5px] text-foreground/40">{date}</span>
           <DeleteButton url={deleteUrl} confirmMessage={deleteConfirm} />
         </div>
       </div>
 
-      <div className="mt-1.5 flex items-center gap-4 pl-2">
+      {/* Title gets the full row width to itself, rather than competing
+          with the badge for space — the same truncation length now reads
+          consistently regardless of which feature's badge sits above it. */}
+      {expanded ? (
+        <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">{title}</p>
+      ) : (
+        <p className="mt-2 truncate text-[13px] text-foreground/75">{title}</p>
+      )}
+
+      <div className="mt-2 flex items-center gap-4">
         {needsToggle && (
           <button
             type="button"
