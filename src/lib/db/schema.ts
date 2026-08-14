@@ -14,6 +14,7 @@ import {
   uuid,
   text,
   timestamp,
+  date,
   integer,
   real,
   doublePrecision,
@@ -21,6 +22,7 @@ import {
   jsonb,
   vector,
   index,
+  uniqueIndex,
   pgEnum,
   customType,
 } from "drizzle-orm/pg-core";
@@ -805,4 +807,46 @@ export const portfolioMetrics = pgTable("portfolio_metrics", {
   views: integer("views"),
   likes: integer("likes"),
   ts: timestamp("ts").defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Daily digest — studio sidebar's "styles today" + navbar's "news" popover
+// ---------------------------------------------------------------------------
+
+// One row per (kind, day) — a fixed, scopeless query run at most once per
+// UTC calendar day, not a per-user or per-scope cache like trendReads. The
+// unique index is the concurrency guard: `ensureDailyDigest` inserts a
+// "running" placeholder with `.onConflictDoNothing()`, so two studio
+// navigations landing at once around day-rollover can't both kick off a
+// generation for the same (kind, day). Same `items`/`sources`/`digest`
+// shape either kind writes (style items vs news items both round-trip
+// through jsonb regardless), so one table with a `kind` discriminator beats
+// two near-duplicate tables.
+export const dailyDigest = pgTable(
+  "daily_digest",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(), // "styles" | "news"
+    digestDate: date("digest_date").notNull(), // UTC calendar day this covers
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    digest: text("digest"), // pass-1 research prose
+    items: jsonb("items"), // structured items — shape depends on kind, see src/lib/digest/read.ts
+    sources: jsonb("sources"), // [{ title, url }] citation whitelist — same pattern as trendReads.sources
+    model: text("model"),
+    error: text("error"),
+    tokensUsed: integer("tokens_used"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("daily_digest_kind_date_idx").on(t.kind, t.digestDate)],
+);
+
+// Per-user "have they seen today's digest" state. A separate table rather
+// than columns on `users` — same split as `designerProfiles`: feature state
+// that isn't identity stays out of the core identity table.
+export const userDigestSeen = pgTable("user_digest_seen", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  lastSeenStylesAt: timestamp("last_seen_styles_at"),
+  lastSeenNewsAt: timestamp("last_seen_news_at"),
 });

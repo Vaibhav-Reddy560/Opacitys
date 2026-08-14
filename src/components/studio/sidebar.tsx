@@ -23,6 +23,9 @@ import { MODULES, STATUS_LABEL } from "@/lib/copy";
 import { META_ACCENT, moduleAccent } from "@/lib/critique/spectrum";
 import { signOut } from "@/lib/auth/actions";
 import { signOutOfFirebase } from "@/lib/firebase/client";
+import { StylesToday } from "./styles-today";
+import { NewsPopover } from "./news-popover";
+import type { DailyStyleItem, DailyNewsItem } from "@/lib/digest/read";
 
 interface SidebarUser {
   name: string | null;
@@ -57,11 +60,19 @@ export function StudioSidebar({
   hasSession,
   open,
   onNavigate,
+  styles,
+  stylesUnseen,
+  news,
+  newsUnseen,
 }: {
   user: SidebarUser | null;
   hasSession: boolean;
   open: boolean;
   onNavigate: () => void;
+  styles: DailyStyleItem[];
+  stylesUnseen: boolean;
+  news: DailyNewsItem[];
+  newsUnseen: boolean;
 }) {
   const pathname = usePathname();
 
@@ -104,7 +115,7 @@ export function StudioSidebar({
 
         <div className="mb-3 border-t border-white/[0.07]" />
 
-        <nav className="flex-1 space-y-0.5">
+        <nav className="space-y-0.5">
           {MODULES.map((m) => {
             const Icon = ICONS[m.slug] ?? Layers;
             const active = pathname === m.href || pathname.startsWith(m.href + "/");
@@ -150,9 +161,19 @@ export function StudioSidebar({
           })}
         </nav>
 
+        <StylesToday items={styles} unseen={stylesUnseen} />
+
         {/* Mobile-only: StudioNav shows this inline at lg, so repeating it
-            in the always-lg-hidden drawer would be a literal duplicate. */}
+            in the always-lg-hidden drawer would be a literal duplicate. News
+            is the one exception — StudioNav's popover is desktop-only real
+            estate, so it gets a row here too for mobile parity. */}
         <div className="mt-4 space-y-2.5 border-t border-white/[0.07] pt-4 lg:hidden">
+          {news.length > 0 && (
+            <div className="flex items-center justify-between px-2.5 py-1">
+              <span className="text-[12.5px] text-foreground/52">Design news</span>
+              <NewsPopover items={news} unseen={newsUnseen} />
+            </div>
+          )}
           {user && (
             <div className="flex items-center gap-2.5 px-2.5 py-1">
               {user.image ? (

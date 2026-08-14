@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Menu, X, Settings, ArrowLeft } from "lucide-react";
 import { TitleImage } from "@/components/brand/title-image";
 import { AccountMenu } from "./account-menu";
+import { NewsPopover } from "./news-popover";
+import type { DailyNewsItem } from "@/lib/digest/read";
 
 interface NavUser {
   name: string | null;
@@ -18,7 +20,8 @@ interface NavUser {
  * inventing a second visual language for the same wordmark.
  *
  * Right-side order, deliberately: Back to site (a real pill button, not a
- * bare text link — it reads as an action, which it is) → Settings (its own
+ * bare text link — it reads as an action, which it is) → News (today's
+ * design-industry briefing, see news-popover.tsx) → Settings (its own
  * icon-linked destination, not folded into the account menu, since it's
  * about the app rather than the identity) → the account menu (avatar only;
  * email and sign out live inside it, not spelled out in the bar at all
@@ -34,11 +37,15 @@ export function StudioNav({
   hasSession,
   open,
   onToggle,
+  news,
+  newsUnseen,
 }: {
   user: NavUser | null;
   hasSession: boolean;
   open: boolean;
   onToggle: () => void;
+  news: DailyNewsItem[];
+  newsUnseen: boolean;
 }) {
   return (
     <header className="sticky top-0 z-40 h-16 shrink-0 border-b border-white/[0.07] bg-background/85 backdrop-blur-md">
@@ -56,6 +63,8 @@ export function StudioNav({
             <ArrowLeft className="size-3.5" aria-hidden />
             Back to site
           </Link>
+
+          <NewsPopover items={news} unseen={newsUnseen} />
 
           <Link
             href="/studio/settings"

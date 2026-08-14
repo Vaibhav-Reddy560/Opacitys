@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { StudioNav } from "./studio-nav";
 import { StudioSidebar } from "./sidebar";
 import { ScrollProgress } from "@/components/landing/scroll-progress";
+import type { DailyStyleItem, DailyNewsItem } from "@/lib/digest/read";
 
 interface ShellUser {
   name: string | null;
@@ -35,10 +36,18 @@ interface ShellUser {
 export function StudioShell({
   user,
   hasSession,
+  styles,
+  stylesUnseen,
+  news,
+  newsUnseen,
   children,
 }: {
   user: ShellUser | null;
   hasSession: boolean;
+  styles: DailyStyleItem[];
+  stylesUnseen: boolean;
+  news: DailyNewsItem[];
+  newsUnseen: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -64,10 +73,26 @@ export function StudioShell({
 
   return (
     <div>
-      <StudioNav user={user} hasSession={hasSession} open={open} onToggle={() => setOpen((v) => !v)} />
+      <StudioNav
+        user={user}
+        hasSession={hasSession}
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        news={news}
+        newsUnseen={newsUnseen}
+      />
       <ScrollProgress />
       <div className="lg:flex">
-        <StudioSidebar user={user} hasSession={hasSession} open={open} onNavigate={() => setOpen(false)} />
+        <StudioSidebar
+          user={user}
+          hasSession={hasSession}
+          open={open}
+          onNavigate={() => setOpen(false)}
+          styles={styles}
+          stylesUnseen={stylesUnseen}
+          news={news}
+          newsUnseen={newsUnseen}
+        />
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
