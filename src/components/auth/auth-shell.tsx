@@ -29,7 +29,7 @@ export function AuthShell({
           <BorderTrace />
           <PrismPanel className="p-9 sm:p-11">
             <Link href="/" className="mb-7 flex justify-center">
-              <TitleImage width={591} height={88} className="h-7 sm:h-9 w-auto" size="hero" priority />
+              <TitleImage width={1200} height={158} className="h-7 sm:h-9 w-auto" size="compact" priority />
             </Link>
 
             <div className="text-center">

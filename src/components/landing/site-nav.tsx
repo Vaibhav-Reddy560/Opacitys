@@ -15,7 +15,7 @@ export function SiteNav() {
         {/* TitleImage at a fixed 26px display height — same call as the
             footer's, so the mark is identically sized in both places. */}
         <Link href="/" aria-label="Opacitys home" className="h-[26px] shrink-0">
-          <TitleImage width={1200} height={179} className="h-[26px] w-auto" size="compact" />
+          <TitleImage width={1200} height={158} className="h-[26px] w-auto" size="compact" />
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-5">

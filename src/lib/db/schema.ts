@@ -362,6 +362,27 @@ export const rebuildVersions = pgTable(
     status: analysisStatusEnum("status").notNull().default("queued"),
     stage: text("stage"),
     error: text("error"),
+    // How this version was produced, and what the app can actually prove
+    // about it. These exist because the feature previously reported every
+    // edit as a success without checking, and a version row carried no
+    // record of what had made it — so a no-op and a real edit were
+    // indistinguishable after the fact, in the UI and in the database.
+    //
+    // "text" for the deterministic path (measure the type, erase the glyphs,
+    // re-set the line from font outlines — no model involved), otherwise the
+    // image provider that ran.
+    method: text("method"),
+    model: text("model"),
+    /** Fraction of the edited region that measurably changed. See lib/rebuild/verify.ts. */
+    changedRatio: real("changed_ratio"),
+    /** Generation attempts spent, including the ones that didn't land. */
+    attempts: integer("attempts"),
+    /**
+     * What the text path substituted, in plain words — e.g. "Archivo 900,
+     * 3.9% width match". Surfaced to the user rather than implying the
+     * original typeface was reproduced exactly, which it never is.
+     */
+    fontNote: text("font_note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("rebuild_versions_analysis_created_idx").on(t.analysisId, t.createdAt)],

@@ -57,6 +57,12 @@ export default async function RebuildResultPage({ params }: { params: Promise<{ 
     label: v.label,
     status: v.status,
     createdAt: v.createdAt.toISOString(),
+    error: v.error,
+    method: v.method,
+    model: v.model,
+    changedRatio: v.changedRatio,
+    attempts: v.attempts,
+    fontNote: v.fontNote,
   }));
 
   // Grouped by version because each generation has its own tree — switching

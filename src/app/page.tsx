@@ -242,18 +242,25 @@ export default function Home() {
         </Section>
 
         <footer className="border-t border-white/[0.06] px-5 py-10 sm:px-8">
-          <div className="mx-auto flex max-w-[1680px] flex-col items-center justify-between gap-4 sm:flex-row">
+          {/* grid-cols-3, not flex justify-between: with three items of
+              different widths, justify-between only pushes the outer two to
+              the edges — the middle one lands wherever that leaves it, not
+              at the true centre of the row (it was visibly left-of-centre,
+              since the wordmark is narrower than the "Open the studio"
+              link). Three equal columns, each item justified within its own
+              column, is what actually centres the middle one. */}
+          <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-4 sm:grid sm:grid-cols-3 sm:items-center">
             {/* Same TitleImage call as SiteNav, same display height, so the
                 mark is identically sized in both places. */}
-            <div className="h-[26px]">
-              <TitleImage width={1200} height={179} className="h-[26px] w-auto" size="compact" />
+            <div className="h-[26px] sm:justify-self-start">
+              <TitleImage width={1200} height={158} className="h-[26px] w-auto" size="compact" />
             </div>
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs text-foreground/50 sm:justify-self-center">
               Designed with designers in mind.
             </p>
             <Link
               href="/studio"
-              className="text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-foreground/90 hover:underline"
+              className="text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-foreground/90 hover:underline sm:justify-self-end"
             >
               Open the studio
             </Link>

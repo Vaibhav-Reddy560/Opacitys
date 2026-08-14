@@ -9,23 +9,36 @@ interface TitleImageProps {
   width: number;
   height: number;
   className?: string;
-  /** Sweep band is narrower at nav/footer scale, fuller in the hero. */
+  /** Which asset loads, not just the sweep band (see the doc comment) —
+   *  "hero" is the landing page's big wordmark only. Everything else
+   *  (nav, footer, auth shell, studio sidebar) is "compact". */
   size?: "hero" | "compact";
   /** Set on above-the-fold usages (hero, auth shell) — this is the LCP image there. */
   priority?: boolean;
 }
 
 /**
- * The title art (see /public/Title_Image.webp — a pre-rendered prismatic
- * treatment of the wordmark, not generated here). A raster image can't run
- * the WebGL thin-film shader PrismaticChrome uses, so the same idea —
- * iridescence confined to a moving highlight, not a flat rainbow wash — is
- * reproduced in CSS: a band of the app's real spectrum gradient travels
- * across the glyphs on a zig-zag path, masked to the image's own alpha so
- * it only lights the letterforms. This sweep runs on its own clock,
- * unaffected by hover.
+ * The title art. Two different source images now, not one asset at two
+ * sizes:
+ *   - Title_Image.webp — the landing hero only (`size="hero"`). Original
+ *     letter-spacing; at hero scale (up to lg:max-w-2xl) it doesn't need
+ *     any help reading clearly.
+ *   - Title_widened.webp — everywhere else (`size="compact"`, the default):
+ *     nav, footer, the auth shell, the studio sidebar. Same wordmark, wider
+ *     tracking (added at the source, not via CSS letter-spacing on a raster
+ *     image, which would just look smudged) — at the 24-36px heights these
+ *     sites actually render at, the original's tighter spacing crowded the
+ *     glyphs together. Sourced from Title_widened.png (3670x484, 1.7MB),
+ *     downscaled to 1200px wide / ~70KB, same pipeline as the original.
  *
- * The source PNG was originally 14732x2192 (32.3MP, 26.7MiB) served
+ * A raster image can't run the WebGL thin-film shader PrismaticChrome
+ * uses, so on the hero the same idea — iridescence confined to a moving
+ * highlight, not a flat rainbow wash — is reproduced in CSS: a band of the
+ * app's real spectrum gradient travels across the glyphs on a zig-zag path,
+ * masked to the image's own alpha so it only lights the letterforms. This
+ * sweep runs on its own clock, unaffected by hover.
+ *
+ * The original hero PNG was originally 14732x2192 (32.3MP, 26.7MiB) served
  * `unoptimized` — the LCP asset on every page that renders it, at up to
  * ~768 CSS px. Downscaled once (scripts/, not checked in — see git history)
  * into two files actually sized for how they're used:
@@ -56,7 +69,7 @@ export function TitleImage({
   return (
     <div className="group relative inline-block shrink-0">
       <Image
-        src="/Title_Image.webp"
+        src={size === "hero" ? "/Title_Image.webp" : "/Title_widened.webp"}
         alt="Opacitys"
         width={width}
         height={height}

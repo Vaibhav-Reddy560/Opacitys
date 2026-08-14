@@ -12,6 +12,7 @@ import {
   SquareDashed,
   Check,
   X,
+  GitCompareArrows,
 } from "lucide-react";
 import { PrismPanel } from "@/components/brand/prism";
 import { fetchJson } from "@/lib/http";
@@ -40,6 +41,16 @@ export interface EditorVersion {
   label: string | null;
   status: string;
   createdAt: string;
+  /** Why a failed edit failed — shown in the history, not swallowed. */
+  error: string | null;
+  /** "text" for the deterministic path, otherwise the image provider. Null on the original and on older rows. */
+  method: string | null;
+  model: string | null;
+  /** Fraction of the edited region that measurably changed. */
+  changedRatio: number | null;
+  attempts: number | null;
+  /** Which typeface the text path substituted, in plain words. */
+  fontNote: string | null;
 }
 
 /** Normalized rect in 0-1 space, so overlays scale with the rendered image. */
@@ -106,6 +117,12 @@ export function RebuildEditor({
   const [instruction, setInstruction] = useState("");
   const [editStage, setEditStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Hold-to-compare against the version this one was edited from. A diff is
+  // the only way to actually check an edit did what was asked, and for a long
+  // time this feature reported success on edits that changed nothing — so
+  // seeing the before is not a nicety here, it is the thing that would have
+  // caught it.
+  const [comparing, setComparing] = useState(false);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
@@ -126,6 +143,12 @@ export function RebuildEditor({
   const imgW = version?.width ?? 0;
   const imgH = version?.height ?? 0;
   const busy = editStage !== null;
+
+  // The version this one was edited from — what "before" means for the
+  // compare toggle. The original upload has no parent, so it has nothing to
+  // compare against.
+  const parentVersion = version?.parentId ? (versions.find((v) => v.id === version.parentId) ?? null) : null;
+  const canCompare = !!parentVersion?.imageUrl && !busy;
 
   // Children keyed by parent, so the panel can render the tree recursively.
   const childrenOf = useMemo(() => {
@@ -384,15 +407,37 @@ export function RebuildEditor({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={downloadPNG}
-            disabled={!version?.imageUrl}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3 py-1.5 text-[12.5px] text-foreground/75 transition-colors hover:border-white/20 hover:text-foreground/95 disabled:opacity-40"
-          >
-            <Download className="size-3.5" aria-hidden />
-            PNG
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Press-and-hold rather than a toggle: a momentary swap makes a
+                small change obvious, where a click-to-switch makes you
+                remember what the other frame looked like. */}
+            <button
+              type="button"
+              disabled={!canCompare}
+              onPointerDown={() => setComparing(true)}
+              onPointerUp={() => setComparing(false)}
+              onPointerLeave={() => setComparing(false)}
+              onKeyDown={(e) => {
+                if (e.key === " " || e.key === "Enter") setComparing(true);
+              }}
+              onKeyUp={() => setComparing(false)}
+              onBlur={() => setComparing(false)}
+              title={canCompare ? "Hold to see the version this was edited from" : "Nothing to compare against"}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3 py-1.5 text-[12.5px] text-foreground/75 transition-colors hover:border-white/20 hover:text-foreground/95 disabled:opacity-40"
+            >
+              <GitCompareArrows className="size-3.5" aria-hidden />
+              {comparing ? "Before" : "Compare"}
+            </button>
+            <button
+              type="button"
+              onClick={downloadPNG}
+              disabled={!version?.imageUrl}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3 py-1.5 text-[12.5px] text-foreground/75 transition-colors hover:border-white/20 hover:text-foreground/95 disabled:opacity-40"
+            >
+              <Download className="size-3.5" aria-hidden />
+              PNG
+            </button>
+          </div>
         </div>
 
         <div
@@ -418,13 +463,33 @@ export function RebuildEditor({
           }}
         >
           {version?.imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element -- external Blob URL, not a local asset */
-            <img
-              src={version.imageUrl}
-              alt={version.label ?? "Design"}
-              draggable={false}
-              className="block max-h-[70vh] w-full object-contain"
-            />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- external Blob URL, not a local asset */}
+              <img
+                src={version.imageUrl}
+                alt={version.label ?? "Design"}
+                draggable={false}
+                className="block max-h-[70vh] w-full object-contain"
+              />
+              {/* Kept mounted and merely hidden, so holding Compare swaps
+                  instantly instead of waiting on a fetch the first time. */}
+              {parentVersion?.imageUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element -- external Blob URL, not a local asset */
+                <img
+                  src={parentVersion.imageUrl}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="absolute inset-0 block size-full object-contain"
+                  style={{ visibility: comparing ? "visible" : "hidden" }}
+                />
+              )}
+              {comparing && (
+                <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/70 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-white/90">
+                  Before
+                </span>
+              )}
+            </>
           ) : (
             <div className="grid h-64 place-items-center text-[13px] text-foreground/45">No image yet.</div>
           )}
@@ -552,6 +617,32 @@ export function RebuildEditor({
         </h2>
         <ul className="mt-2.5">{renderTree(null, 0)}</ul>
 
+        {/* How this version was made. Shown because the feature used to
+            assert every edit had worked without checking — stating the method,
+            the measured change and the substituted typeface is what makes the
+            claim inspectable rather than something to be taken on trust. */}
+        {version?.method && (
+          <div className="mt-4 space-y-1.5 border-t border-white/[0.08] pt-4">
+            <span className="text-[10.5px] uppercase tracking-[0.14em] text-foreground/45">How this was made</span>
+            <p className="text-[12.5px] leading-relaxed text-foreground/72">
+              {version.method === "text"
+                ? "Type re-set from font outlines — no image model, full resolution kept."
+                : `Redrawn by ${version.model ?? "an image model"}.`}
+            </p>
+            {version.fontNote && (
+              <p className="text-[12px] leading-relaxed text-foreground/52">
+                {version.fontNote}. The original typeface can&apos;t be shipped, so this is the closest match available.
+              </p>
+            )}
+            {version.changedRatio !== null && (
+              <p className="text-[12px] text-foreground/52">
+                {(version.changedRatio * 100).toFixed(1)}% of the selection changed
+                {version.attempts && version.attempts > 1 ? `, after ${version.attempts} attempts` : ""}.
+              </p>
+            )}
+          </div>
+        )}
+
         {selected && (
           <div className="mt-4 space-y-2 border-t border-white/[0.08] pt-4">
             <span className="text-[10.5px] uppercase tracking-[0.14em] text-foreground/45">{selected.kind}</span>
@@ -575,6 +666,7 @@ export function RebuildEditor({
           <ul className="mt-2.5 space-y-1">
             {versions.map((v) => {
               const isCur = v.id === currentVersionId;
+              const failed = v.status === "failed";
               return (
                 <li key={v.id}>
                   <button
@@ -598,6 +690,14 @@ export function RebuildEditor({
                     </span>
                     <span className="min-w-0 flex-1 truncate">{v.label ?? v.instruction ?? "Untitled"}</span>
                   </button>
+                  {/* A failed edit keeps its reason visible instead of just
+                      greying out — "it didn't work" with no explanation is
+                      what made this feature impossible to trust. */}
+                  {failed && v.error && (
+                    <p className="px-1.5 pb-1.5 pl-11 text-[11.5px] leading-snug" style={{ color: "oklch(0.72 0.19 18)" }}>
+                      {v.error}
+                    </p>
+                  )}
                 </li>
               );
             })}
