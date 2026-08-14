@@ -26,7 +26,7 @@ export default async function LibraryPage() {
 
   return (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <header className="mb-10">
           <div className="flex items-start gap-4">
             <PrismIcon accent={ACCENT} size={46}>

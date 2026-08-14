@@ -54,7 +54,15 @@ export function PageHeader({
         <PrismRule />
       </div>
 
-      <p className="text-pretty mt-6 max-w-2xl text-[14.5px] leading-relaxed text-foreground/65">
+      {/* No max-w cap: this used to be max-w-2xl (672px), tuned for when the
+          page container itself was max-w-3xl (768px) — at that width a
+          672px paragraph already used most of the available line. Now that
+          the container is wider (max-w-4xl, 896px+), the same fixed cap
+          left a growing, increasingly obvious block of empty space to its
+          right instead of wrapping to the width that's actually there. The
+          container itself is still the real width constraint; this just
+          stops double-capping inside it. */}
+      <p className="text-pretty mt-6 text-[14.5px] leading-relaxed text-foreground/65">
         {m.body}
       </p>
 

@@ -80,7 +80,7 @@ export default function StudioHome() {
         <PrismRule className="flex-1" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {MODULES.map((m) => {
           const Icon = ICONS[m.slug] ?? Layers;
           const accent = moduleAccent(m);
@@ -110,7 +110,7 @@ export default function StudioHome() {
                   </div>
                 </div>
                 <p className="mt-4 text-[13px] leading-relaxed text-foreground/55">
-                  {m.body}
+                  {m.summary}
                 </p>
               </PrismPanel>
             </Link>

@@ -28,7 +28,7 @@ export default async function IdentifyResultPage({ params }: { params: Promise<{
 
   const shell = (children: React.ReactNode) => (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-4xl">
         <Link
           href="/studio/identify"
           className="inline-flex items-center gap-2 text-[13px] text-foreground/55 transition-colors hover:text-foreground/90"

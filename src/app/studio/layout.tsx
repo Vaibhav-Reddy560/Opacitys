@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { StudioSidebar } from "@/components/studio/sidebar";
+import { StudioShell } from "@/components/studio/studio-shell";
 import { readSession } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -21,9 +21,8 @@ export default async function StudioLayout({
   const user = session ? { name: session.name, email: session.email, image: session.image } : null;
 
   return (
-    <div className="lg:flex">
-      <StudioSidebar user={user} hasSession={session !== null} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <StudioShell user={user} hasSession={session !== null}>
+      {children}
+    </StudioShell>
   );
 }

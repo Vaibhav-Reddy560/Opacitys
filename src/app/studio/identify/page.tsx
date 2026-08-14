@@ -15,7 +15,7 @@ const ACCENT = SPECTRUM.hierarchy.color;
 export default function IdentifyPage() {
   return (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-4xl">
         <PageHeader module={MODULE} icon={<Aperture className="size-4" aria-hidden />} />
 
         <IdentifyForm />

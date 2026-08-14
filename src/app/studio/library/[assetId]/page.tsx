@@ -24,7 +24,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ as
 
   return (
     <div className="px-6 py-10 lg:px-10 lg:py-12">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-4xl">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/studio/library"

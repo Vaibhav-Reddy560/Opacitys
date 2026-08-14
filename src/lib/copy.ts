@@ -87,7 +87,11 @@ export const PROBLEM = {
  *
  * `input` / `output` / `steps` back the landing-page feature explorer — every
  * line has to describe something the module genuinely does; `body` is the
- * original one-paragraph summary and stays as-is.
+ * original one-paragraph summary and stays as-is. `summary` is a second,
+ * shorter cut for the post-sign-in studio home grid (src/app/studio/page.tsx)
+ * — nine cards need roughly matched lengths to read as one grid rather than
+ * a ragged one, which `body` (deliberately full detail, tuned for the
+ * module's own page header) isn't written for.
  */
 export const MODULES = [
   {
@@ -97,6 +101,8 @@ export const MODULES = [
     tagline: "See what is actually working",
     body:
       "Upload a design and get it read back to you in measurements — contrast ratios, type scale, alignment, spacing rhythm — each one pinned to the exact place on the image it came from.",
+    summary:
+      "Reads a design back in measurements — contrast, type scale, alignment, spacing — each one pinned to the exact spot it happens.",
     dimension: "color",
     status: "live",
     input: "A finished or in-progress design, as an image",
@@ -136,6 +142,8 @@ export const MODULES = [
     // Only an edit with nothing selected regenerates the whole frame, and
     // that one really is a new image very close to the original rather
     // than a byte-identical copy of it.
+    summary:
+      "Finds every element inside a design — logo, type, buttons — and redraws just the part you describe, keeping everything else untouched.",
     status: "live",
     input: "An image of a poster, logo, or finished screen",
     output: "Its elements found and named, and a redrawn version for any change you describe",
@@ -152,6 +160,8 @@ export const MODULES = [
     tagline: "Name the style, in proportion",
     body:
       "Most designs are a blend, not a category. This reads an image against a labelled taxonomy and tells you the mix — sixty percent Swiss, thirty brutalist, ten editorial — with the same answer every time you ask.",
+    summary:
+      "Reads a design against a labelled taxonomy and returns its actual style mix — say, sixty percent Swiss, thirty brutalist, ten editorial.",
     dimension: "hierarchy",
     // Wired end to end. Needs GROQ_API_KEY for the style read and
     // DATABASE_URL to persist it.
@@ -171,6 +181,8 @@ export const MODULES = [
     tagline: "Read the room, and the reason",
     body:
       "Name a category, platform or brand and it searches the live web — within the window you pick — for what's actually moving, where it came from, why it's catching on, and how to execute it. Every claim is pinned to the page it came from.",
+    summary:
+      "Searches the live web for what's actually moving in a category or platform, why it's catching on, and how to execute it.",
     dimension: "layout",
     // Wired end to end. Needs GROQ_API_KEY (write-up + structured synthesis)
     // and TAVILY_API_KEY (the actual web search — src/lib/trends/tavily.ts).
@@ -195,6 +207,8 @@ export const MODULES = [
     tagline: "From brief to build, with what you actually have",
     body:
       "Give it the client's specifications, your resources and your current skills. It returns practical directions — including ones you have not tried — as an ordered plan naming the tool and the step for each stage. Ask it anything about the plan afterward — it can explain itself, or fix a step that's genuinely wrong.",
+    summary:
+      "Turns a client brief and your actual resources into an ordered plan — which tool, which step, in what order to use them.",
     dimension: "spacing",
     // Wired end to end. Needs GROQ_API_KEY — one generateJson call
     // (MODELS.reasoning, provider-enforced JSON schema; a nested plan
@@ -222,6 +236,8 @@ export const MODULES = [
     tagline: "Know where everything is",
     body:
       "Attach a screenshot and it reads your actual screen to point at the real control. Ask without one and it searches current docs and changelogs instead — either way, the answer is grounded in something live, not a stored guess.",
+    summary:
+      "Reads your actual screen to point at the real control, or searches live docs when you don't have one to show it.",
     dimension: "balance",
     // Wired end to end. Needs GROQ_API_KEY — the screenshot path is one
     // vision call (qwen), the no-screenshot path is the same live-search +
@@ -244,6 +260,8 @@ export const MODULES = [
     tagline: "The whole client relationship, in one thread",
     body:
       "Log what the client said, when, and through which channel. Track how many rounds a project has been through, how long each turnaround took, and what you charged for it — with every message readable back into what they probably mean and a reply you could send.",
+    summary:
+      "Logs every client message with its timing and cost, and reads any note back into what they meant and a reply you could send.",
     // "depth" was retired from the critique dimension set; this module's
     // accent now shares "balance" rather than a dimension no analyzer
     // measures any more. ("tools" also uses "balance", but that module is
@@ -264,9 +282,11 @@ export const MODULES = [
     slug: "originality",
     href: "/studio/originality",
     name: "Originality",
-    tagline: "Check it is yours before you spend a week on it",
+    tagline: "Check it's yours before you spend a week",
     body:
       "Describe the direction — or attach a sketch — and get a read on how crowded that territory already is: the movements and work it sits closest to, what's genuinely distinct about it, and moves that would put more daylight between you and the nearest neighbor.",
+    summary:
+      "Checks how crowded your direction already is — its nearest neighbors, what's genuinely distinct, and moves that would widen the gap.",
     // "originality" was retired from the critique dimension set (this
     // module is the standalone feature it duplicated); "restraint"
     // inherits the exact same color, so this accent doesn't change.
@@ -290,6 +310,8 @@ export const MODULES = [
     tagline: "Your style, recorded over time",
     body:
       "Every Critique, Identify and Originality read you've run, aggregated into one record — the styles you keep returning to, your measured strengths and recurring notes, the palette you reach for. Nothing here is guessed; a dimension without enough signal says so instead of scoring zero.",
+    summary:
+      "Aggregates every read you've run into one record — the styles you return to, your measured strengths, and the palette you reach for.",
     dimension: "rhythm",
     // Wired end to end. Entirely derived from rows Critique/Identify/
     // Originality already write — no new model capability needed for the
@@ -314,6 +336,8 @@ export const MODULES = [
     tagline: "Know what's actually yours to use",
     body:
       "General, durable principles on public domain, licensing and work-for-hire, plus a country-aware answer to a specific question about a font, image, or asset — always with a plain reminder that this is guidance, not legal advice.",
+    summary:
+      "General, durable guidance on public domain and licensing, plus a country-aware answer to a specific question about a font or asset.",
     dimension: "contrast",
     status: "live",
     input: "A question about an asset, plus the country you're working from",

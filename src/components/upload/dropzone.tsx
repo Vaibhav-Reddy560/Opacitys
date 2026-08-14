@@ -221,8 +221,7 @@ export function Dropzone({ onFileSelected, disabled }: DropzoneProps) {
         >
           <span
             aria-hidden
-            className="grid size-3.5 place-items-center rounded-full"
-            style={tagLocation ? { background: `linear-gradient(135deg, ${SPECTRUM_GRADIENT})` } : undefined}
+            className={cn("grid size-3.5 place-items-center rounded-full", tagLocation && "bg-white")}
           >
             <MapPin className={cn("size-2.5", tagLocation ? "text-black/70" : "text-foreground/45")} aria-hidden />
           </span>
