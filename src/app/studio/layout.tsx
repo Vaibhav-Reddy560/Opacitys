@@ -4,7 +4,7 @@ import { StudioShell } from "@/components/studio/studio-shell";
 import { readSession } from "@/lib/auth/session";
 import { getTodayStyles, getTodayNews } from "@/lib/digest/get";
 import { getSeenState, markSeen } from "@/lib/digest/seen";
-import { ensureDailyDigest } from "@/lib/digest/pipeline";
+import { ensureDailyDigests } from "@/lib/digest/pipeline";
 
 export const metadata: Metadata = {
   title: "Studio — Opacitys",
@@ -26,16 +26,18 @@ export default async function StudioLayout({
   const session = await readSession();
   const user = session ? { name: session.name, email: session.email, image: session.image } : null;
 
-  // Cheap indexed reads (at most today's row per kind, by primary key/unique
-  // index) — never a live Tavily/Groq call in the render path itself. If
-  // either digest isn't fresh (missing today, or still showing a prior
-  // day's row), generation is fired via after() so this response is never
-  // blocked on it; see ensureDailyDigest's own doc comment for why calling
-  // it unconditionally on every stale render is safe (budget-gated,
-  // concurrency-guarded by a DB unique constraint).
+  // Cheap indexed reads (at most today's row per kind, by unique index) —
+  // never a live Tavily/Groq call in the render path itself. If either
+  // digest isn't fresh (missing today, or still showing a prior day's row),
+  // generation is fired via after() so this response is never blocked on it.
+  //
+  // ONE after() covering both kinds, not one per kind: two separate
+  // callbacks ran concurrently and rate-limited each other on Groq's shared
+  // per-minute budget, which is what silently froze this feature on Aug 15,
+  // 16 and 19 (see ensureDailyDigests). Calling it on every stale render is
+  // safe — it's budget-gated and claims work through an atomic DB upsert.
   const [styles, news] = await Promise.all([getTodayStyles(), getTodayNews()]);
-  if (!styles?.isFresh) after(() => ensureDailyDigest("styles").catch((err) => console.error("[digest] styles generation failed:", err)));
-  if (!news?.isFresh) after(() => ensureDailyDigest("news").catch((err) => console.error("[digest] news generation failed:", err)));
+  if (!styles?.isFresh || !news?.isFresh) after(() => ensureDailyDigests());
 
   let stylesUnseen = false;
   let newsUnseen = false;
